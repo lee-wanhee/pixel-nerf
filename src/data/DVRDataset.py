@@ -6,7 +6,7 @@ import imageio
 import numpy as np
 import cv2
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
-
+import pdb
 
 class DVRDataset(torch.utils.data.Dataset):
     """
@@ -50,8 +50,11 @@ class DVRDataset(torch.utils.data.Dataset):
         elif stage == "test":
             file_lists = [os.path.join(x, list_prefix + "test.lst") for x in cats]
 
+        print('file_lists', file_lists)
+
         all_objs = []
         for file_list in file_lists:
+            print('file_list', file_list)
             if not os.path.exists(file_list):
                 continue
             base_dir = os.path.dirname(file_list)
@@ -61,6 +64,7 @@ class DVRDataset(torch.utils.data.Dataset):
             all_objs.extend(objs)
 
         self.all_objs = all_objs
+        print('all_objs', all_objs)
         self.stage = stage
 
         self.image_to_tensor = get_image_to_tensor_balanced()
@@ -108,6 +112,8 @@ class DVRDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         cat, root_dir = self.all_objs[index]
+        print('index', index)
+        print('root_dir', root_dir)
 
         rgb_paths = [
             x

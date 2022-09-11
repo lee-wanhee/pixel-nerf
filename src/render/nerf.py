@@ -262,7 +262,7 @@ class NeRFRenderer(torch.nn.Module):
         :return render dict
         """
 
-        print('rays.shape', rays.shape)
+        # print('rays.shape', rays.shape)
         # breakpoint()
 
         with profiler.record_function("renderer_forward"):
