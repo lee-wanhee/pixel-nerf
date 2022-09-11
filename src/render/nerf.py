@@ -261,6 +261,10 @@ class NeRFRenderer(torch.nn.Module):
         :param want_weights if true, returns compositing weights (SB, B, K)
         :return render dict
         """
+
+        print('rays.shape', rays.shape)
+        # breakpoint()
+
         with profiler.record_function("renderer_forward"):
             if self.sched is not None and self.last_sched.item() > 0:
                 self.n_coarse = self.sched[1][self.last_sched.item() - 1]
