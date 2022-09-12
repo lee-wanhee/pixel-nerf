@@ -3,11 +3,12 @@ import os
 from .MultiObjectDataset import MultiObjectDataset
 from .DVRDataset import DVRDataset
 from .SRNDataset import SRNDataset
+from .TDWDataset import MultiscenesDataset
 
 from .data_util import ColorJitterDataset
 
 
-def get_split_dataset(dataset_type, datadir, want_split="all", training=True, **kwargs):
+def get_split_dataset(dataset_type, datadir, want_split="all", training=True, opt=None, **kwargs):
     """
     Retrieved desired dataset class
     :param dataset_type dataset type name (srn|dvr|dvr_gen, etc)
@@ -43,6 +44,9 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, **
             # Apply color jitter during train
             train_aug = ColorJitterDataset
             train_aug_flags = {"extra_inherit_attrs": ["sub_format"]}
+    elif dataset_type.startswith("tdw"):
+        dset_class = MultiscenesDataset
+
     else:
         raise NotImplementedError("Unsupported dataset type", dataset_type)
 
@@ -50,21 +54,45 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, **
     want_val = want_split != "train" and want_split != "test"
     want_test = want_split != "train" and want_split != "val"
 
-    if want_train:
-        train_set = dset_class(datadir, stage="train", **flags, **kwargs)
-        if train_aug is not None:
-            train_set = train_aug(train_set, **train_aug_flags)
+    if dataset_type.startswith("tdw"):
+        if want_train:
+            opt.isTrain = True
+            train_set = dset_class(opt, **flags, **kwargs)
 
-    if want_val:
-        val_set = dset_class(datadir, stage="val", **flags, **kwargs)
+        if want_val:
+            opt.isTrain = False
+            # opt.dataroot = opt.dataroot.replace('train', 'test')
+            val_set = dset_class(opt, **flags, **kwargs)
 
-    if want_test:
-        test_set = dset_class(datadir, stage="test", **flags, **kwargs)
+        if want_test:
+            opt.isTrain = False
+            # opt.dataroot = opt.dataroot.replace('train', 'test')
+            test_set = dset_class(opt, **flags, **kwargs)
 
-    if want_split == "train":
-        return train_set
-    elif want_split == "val":
-        return val_set
-    elif want_split == "test":
-        return test_set
-    return train_set, val_set, test_set
+        if want_split == "train":
+            return train_set
+        elif want_split == "val":
+            return val_set
+        elif want_split == "test":
+            return test_set
+        return train_set, val_set, test_set
+
+    else:
+        if want_train:
+            train_set = dset_class(datadir, stage="train", **flags, **kwargs)
+            if train_aug is not None:
+                train_set = train_aug(train_set, **train_aug_flags)
+
+        if want_val:
+            val_set = dset_class(datadir, stage="val", **flags, **kwargs)
+
+        if want_test:
+            test_set = dset_class(datadir, stage="test", **flags, **kwargs)
+
+        if want_split == "train":
+            return train_set
+        elif want_split == "val":
+            return val_set
+        elif want_split == "test":
+            return test_set
+        return train_set, val_set, test_set

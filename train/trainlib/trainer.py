@@ -5,6 +5,9 @@ from torch.utils.tensorboard import SummaryWriter
 import tqdm
 import warnings
 
+# added for tdw / wanhee
+from data.TDWDataset import collate_fn
+
 
 class Trainer:
     def __init__(self, net, train_dataset, test_dataset, args, conf, device=None):
@@ -13,20 +16,39 @@ class Trainer:
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
 
-        self.train_data_loader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=8,
-            pin_memory=False,
-        )
-        self.test_data_loader = torch.utils.data.DataLoader(
-            test_dataset,
-            batch_size=min(args.batch_size, 16),
-            shuffle=True,
-            num_workers=4,
-            pin_memory=False,
-        )
+        if 'tdw' in args.dataset_format:
+            self.train_data_loader = torch.utils.data.DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=8,
+                pin_memory=False,
+                collate_fn=collate_fn,
+            )
+            self.test_data_loader = torch.utils.data.DataLoader(
+                test_dataset,
+                batch_size=min(args.batch_size, 16),
+                shuffle=True,
+                num_workers=4,
+                pin_memory=False,
+                collate_fn=collate_fn,
+            )
+
+        else:
+            self.train_data_loader = torch.utils.data.DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=8,
+                pin_memory=False,
+            )
+            self.test_data_loader = torch.utils.data.DataLoader(
+                test_dataset,
+                batch_size=min(args.batch_size, 16),
+                shuffle=True,
+                num_workers=4,
+                pin_memory=False,
+            )
 
         self.num_total_batches = len(self.train_dataset)
         self.exp_name = args.name

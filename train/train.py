@@ -51,13 +51,31 @@ def extra_args(parser):
         default=None,
         help="Freeze encoder weights and only train MLP",
     )
+
+    parser.set_defaults(input_nc=3, output_nc=3)
+    parser.add_argument('--n_scenes', type=int, default=1000, help='dataset length is #scenes')
+    parser.add_argument('--n_img_each_scene', type=int, default=4,
+                        help='for each scene, how many images to load in a batch')
+    parser.add_argument('--no_shuffle', action='store_true')
+    parser.add_argument('--mask_size', type=int, default=128)
+    parser.add_argument('--load_size', type=int, default=128)
+    parser.add_argument('--frame5', action='store_true')
+    parser.add_argument('--skip', type=int, default=0)
+    parser.add_argument('--dataset_nearest_interp', action='store_true')
+    parser.add_argument('--dataset_combine_masks', action='store_true')
+    parser.add_argument('--color_jitter', action='store_true')
+    parser.add_argument('--use_eisen_seg', action='store_true')
+    parser.add_argument('--small_dataset', action='store_true')
+    parser.add_argument('--fixed_locality', action='store_true')
+
     return parser
 
 
 args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
 device = util.get_cuda(args.gpu_id[0])
 
-dset, val_dset, _ = get_split_dataset(args.dataset_format, args.datadir)
+# dset, val_dset, _ = get_split_dataset(args.dataset_format, args.datadir)
+dset, val_dset, _ = get_split_dataset(args.dataset_format, args.datadir, opt=args)
 print(
     "dset z_near {}, z_far {}, lindisp {}".format(dset.z_near, dset.z_far, dset.lindisp)
 )
@@ -109,6 +127,8 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
         self.use_bbox = args.no_bbox_step > 0
 
+        self.args = args
+
     def post_batch(self, epoch, batch):
         renderer.sched_step(args.batch_size)
 
@@ -120,8 +140,23 @@ class PixelNeRFTrainer(trainlib.Trainer):
         # breakpoint()
         if "images" not in data:
             return {}
+        # if 'tdw' in self.args.dataset_format:
+        #     all_images = data["images"].view(self.args.batch_size, self.args.n_img_each_scene, 3, 128, 128).to(device=device)  # (SB, NV, 3, H, W)
+        #
+        #     SB, NV, _, H, W = all_images.shape
+        #     all_poses = data["poses"].view(self.args.batch_size, self.args.n_img_each_scene, 4, 4).to(device=device)  # (SB, NV, 4, 4)
+        #     all_bboxes = data.get("bbox")  # (SB, NV, 4)  cmin rmin cmax rmax
+        #     all_focals = data["focal"].view(self.args.batch_size, self.args.n_img_each_scene, 2)[:, 0, :]  # (SB)
+        #     all_c = data.get("c")  # (SB)
+        # else:
+        #     all_images = data["images"].to(device=device)  # (SB, NV, 3, H, W)
+        #
+        #     SB, NV, _, H, W = all_images.shape
+        #     all_poses = data["poses"].to(device=device)  # (SB, NV, 4, 4)
+        #     all_bboxes = data.get("bbox")  # (SB, NV, 4)  cmin rmin cmax rmax
+        #     all_focals = data["focal"]  # (SB)
+        #     all_c = data.get("c")  # (SB)
         all_images = data["images"].to(device=device)  # (SB, NV, 3, H, W)
-
         SB, NV, _, H, W = all_images.shape
         all_poses = data["poses"].to(device=device)  # (SB, NV, 4, 4)
         all_bboxes = data.get("bbox")  # (SB, NV, 4)  cmin rmin cmax rmax
