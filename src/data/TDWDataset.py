@@ -160,6 +160,34 @@ class MultiscenesDataset(BaseDataset):
                 assert False
             pose = torch.tensor(pose, dtype=torch.float32)
 
+            # pose = pose.inverse()
+            self._coord_trans_world = torch.tensor(
+                [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
+                dtype=torch.float32,
+            )
+            self._coord_trans_cam = torch.tensor(
+                [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
+                dtype=torch.float32,
+            )
+
+            # self._coord_trans_world = torch.tensor(
+            #     [[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]],
+            #     dtype=torch.float32,
+            # )
+            # self._coord_trans_cam = torch.tensor(
+            #     [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
+            #     dtype=torch.float32,
+            # )
+            # self._coord_trans_world = torch.tensor([
+            #     [1, 0, 0, 0],
+            #     [0, 0, 1, 0],
+            #     [0, 1, 0, 0],
+            #     [0, 0, 0, 1]
+            # ], dtype=torch.float32)
+            # self._coord_trans_cam = self._coord_trans_world
+
+            pose = self._coord_trans_world @ torch.tensor(pose, dtype=torch.float32) @ self._coord_trans_cam
+
             if self.opt.fixed_locality:
                 azi_rot = np.eye(3)  # not used; placeholder
             else:
