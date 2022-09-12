@@ -379,7 +379,7 @@ def collate_fn(batch):
     data = {
         'path': None,
         'img_id': None,
-        'focal': torch.Tensor([[0.7413*128, 0.7413*128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV/SB), 2)[:, 0], # dtype float32
+        'focal': torch.Tensor([[0.9605*128, 0.9605*128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV/SB), 2)[:, 0], # dtype float32
         'images': ret['img_data'].view(SB, int(SBNV/SB), 3, H, W),
         'poses': ret['cam2world'].view(SB, int(SBNV/SB), 4, 4)
     }
