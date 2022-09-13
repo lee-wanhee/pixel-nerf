@@ -163,6 +163,8 @@ class PixelNeRFTrainer(trainlib.Trainer):
         all_focals = data["focal"]  # (SB)
         all_c = data.get("c")  # (SB)
 
+        # print('all_images.shape', all_images.shape)
+
         if self.use_bbox and global_step >= args.no_bbox_step:
             self.use_bbox = False
             print(">>> Stopped using bbox sampling @ iter", global_step)
@@ -184,6 +186,9 @@ class PixelNeRFTrainer(trainlib.Trainer):
             images = all_images[obj_idx]  # (NV, 3, H, W)
             poses = all_poses[obj_idx]  # (NV, 4, 4)
             focal = all_focals[obj_idx]
+
+            # print('images.shape, # (NV, 3, H, W)', images.shape) # (2, 4, 3, 128, 128)
+
             c = None
             if "c" in data:
                 c = data["c"][obj_idx]
@@ -202,11 +207,15 @@ class PixelNeRFTrainer(trainlib.Trainer):
                 rgb_gt_all.permute(0, 2, 3, 1).contiguous().reshape(-1, 3)
             )  # (NV, H, W, 3)
 
+            # print('rgb_gt_all.shape', rgb_gt_all.shape)
+
             if all_bboxes is not None:
                 pix = util.bbox_sample(bboxes, args.ray_batch_size)
                 pix_inds = pix[..., 0] * H * W + pix[..., 1] * W + pix[..., 2]
             else:
                 pix_inds = torch.randint(0, NV * H * W, (args.ray_batch_size,))
+
+            # print('pix_inds.shape', pix_inds.shape)
 
             rgb_gt = rgb_gt_all[pix_inds]  # (ray_batch_size, 3)
             rays = cam_rays.view(-1, cam_rays.shape[-1])[pix_inds].to(
@@ -219,6 +228,8 @@ class PixelNeRFTrainer(trainlib.Trainer):
         all_rgb_gt = torch.stack(all_rgb_gt)  # (SB, ray_batch_size, 3)
         all_rays = torch.stack(all_rays)  # (SB, ray_batch_size, 8)
 
+        # print('all_rays.shape', all_rays.shape)
+
         image_ord = image_ord.to(device)
         src_images = util.batched_index_select_nd(
             all_images, image_ord
@@ -226,6 +237,10 @@ class PixelNeRFTrainer(trainlib.Trainer):
         src_poses = util.batched_index_select_nd(all_poses, image_ord)  # (SB, NS, 4, 4)
 
         all_bboxes = all_poses = all_images = None
+
+        # print('src_images.shape', src_images.shape)
+        # print('src_poses.shape', src_poses.shape)
+        # print('image_ord', image_ord)
 
         net.encode(
             src_images,
@@ -240,6 +255,9 @@ class PixelNeRFTrainer(trainlib.Trainer):
         using_fine = len(fine) > 0
 
         loss_dict = {}
+
+        # print('coarse.rgb.shape', coarse.rgb.shape)
+        # print('all_rgb_gt.shape', all_rgb_gt.shape)
 
         rgb_loss = self.rgb_coarse_crit(coarse.rgb, all_rgb_gt)
         loss_dict["rc"] = rgb_loss.item() * self.lambda_coarse
