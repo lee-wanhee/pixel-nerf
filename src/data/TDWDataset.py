@@ -62,7 +62,7 @@ class MultiscenesDataset(BaseDataset):
             self.color_transform = transforms.ColorJitter(0.4, 0.4, 0.4, 0.4)
 
         # todo: debugging room_chair_train only, set the flag to False for TDW dataset
-        self.disable_load_mask = True
+        self.disable_load_mask = False
 
     def _transform(self, img):
         if self.opt.dataset_nearest_interp:
@@ -169,22 +169,6 @@ class MultiscenesDataset(BaseDataset):
                 [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
                 dtype=torch.float32,
             )
-
-            # self._coord_trans_world = torch.tensor(
-            #     [[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]],
-            #     dtype=torch.float32,
-            # )
-            # self._coord_trans_cam = torch.tensor(
-            #     [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],
-            #     dtype=torch.float32,
-            # )
-            # self._coord_trans_world = torch.tensor([
-            #     [1, 0, 0, 0],
-            #     [0, 0, 1, 0],
-            #     [0, 1, 0, 0],
-            #     [0, 0, 0, 1]
-            # ], dtype=torch.float32)
-            # self._coord_trans_cam = self._coord_trans_world
 
             pose = self._coord_trans_world @ torch.tensor(pose, dtype=torch.float32) @ self._coord_trans_cam
 
@@ -320,6 +304,43 @@ class MultiscenesDataset(BaseDataset):
 
             rets.append(ret)
 
+            # print(self.opt.dataroot)
+
+            if 'tdw' in self.opt.dataroot:
+                ret['dataset'] = 'tdw'
+            elif 'bridge' in self.opt.dataroot:
+                ret['dataset'] = 'bridge'
+            else:
+                raise NotImplementedError
+
+            if self.opt.fg_mask:
+                ret['use_fg_mask'] = True
+                masks = (~ret['bg_mask'] * 1.)
+                images = ret['img_data']
+                # print('masks.shape', masks.shape)
+                # print('images.shape', images.shape)
+
+                img = (images * masks).cpu().detach().numpy()
+                rows = np.any(img, axis=1)
+                cols = np.any(img, axis=0)
+                rnz = np.where(rows)[0]
+                cnz = np.where(cols)[0]
+
+                if len(rnz) == 0:
+                    cmin = rmin = 0
+                    cmax = mask.shape[-1]
+                    rmax = mask.shape[-2]
+                else:
+                    rmin, rmax = rnz[[0, -1]]
+                    cmin, cmax = cnz[[0, -1]]
+                bbox = torch.tensor([cmin, rmin, cmax, rmax], dtype=torch.float32)
+                # print('\nbbox', bbox)
+                ret['bbox'] = bbox
+
+            else:
+                ret['use_fg_mask'] = False
+
+
         self.buffer_rets = rets
         return rets
 
@@ -371,18 +392,47 @@ def collate_fn(batch):
         obj_masks = torch.stack([x['obj_masks'].squeeze(1) for x in flat_batch])
         ret['obj_masks'] = obj_masks
         ret['obj_seg_colors'] = torch.stack([x['obj_seg_colors'] for x in flat_batch])
+        ret['bboxes'] = torch.stack([x['bbox'] for x in flat_batch])
 
     # added for pixelnerf
     # print("ret['img_data'].shape", ret['img_data'].shape)
     SBNV, _, H, W = ret['img_data'].shape
     SB = len(batch)
+
+    # print("flat_batch[0]['dataset']", flat_batch[0]['dataset'])
+    if flat_batch[0]['dataset'] == 'tdw':
+        focal = torch.Tensor([[0.9605 * 128, 0.9605 * 128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV / SB), 2)[:, 0]
+    elif flat_batch[0]['dataset'] == 'bridge':
+        focal = torch.Tensor([[0.7703 * 128, 0.7703 * 128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV / SB), 2)[:, 0]
+    else:
+        raise NotImplementedError
+
+    # dtype float32 # 0.9605 tdw / 0.7703 bridge
+    if flat_batch[0]['use_fg_mask']:
+        masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV / SB), 1, H, W)
+        images = ret['img_data'].view(SB, int(SBNV / SB), 3, H, W)
+        images  = images * masks + (1. - masks) * torch.ones_like(images)
+        masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV / SB), 1, H, W)
+        bboxes = ret['bboxes'].view(SB, int(SBNV / SB), 4)
+    else:
+        images = ret['img_data'].view(SB, int(SBNV / SB), 3, H, W)
+        masks = None
+        bboxes = None
+
     data = {
-        'path': None,
+        'path': ret['paths'],
         'img_id': None,
-        'focal': torch.Tensor([[0.9605*128, 0.9605*128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV/SB), 2)[:, 0], # dtype float32
-        'images': ret['img_data'].view(SB, int(SBNV/SB), 3, H, W),
-        'poses': ret['cam2world'].view(SB, int(SBNV/SB), 4, 4)
+        'focal': focal,
+        'images': images,
+        'poses': ret['cam2world'].view(SB, int(SBNV/SB), 4, 4),
+        'masks': masks,
+        'bboxes': bboxes
     }
+    # masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV/SB), 1, H, W)
+    # print('data["images"].shape', data["images"].shape)
+    # print('masks.shape', masks.shape)
+    # print('masks.max()', masks.max())
+    # print('masks.min()', masks.min())
 
     # ret['paths'].view(SB, SBNV/SB)[:, 0]
 

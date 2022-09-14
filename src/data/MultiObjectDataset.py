@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torchvision import transforms
+import pdb
 
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
 
@@ -74,11 +75,17 @@ class MultiObjectDataset(torch.utils.data.Dataset):
             basename = os.path.splitext(os.path.basename(fpath))[0]
             obj_path = os.path.join(dir_path, "{}_obj.png".format(basename))
             img = imageio.imread(obj_path)
+            # print('img', img)
             mask = self.mask_to_tensor(img[..., 3])
             rows = np.any(img, axis=1)
             cols = np.any(img, axis=0)
             rnz = np.where(rows)[0]
             cnz = np.where(cols)[0]
+            # print('rows', rows)
+            # print('cols', cols)
+            # print('rnz', rnz)
+            # print('cnz', cnz)
+
             if len(rnz) == 0:
                 cmin = rmin = 0
                 cmax = mask.shape[-1]
@@ -87,6 +94,8 @@ class MultiObjectDataset(torch.utils.data.Dataset):
                 rmin, rmax = rnz[[0, -1]]
                 cmin, cmax = cnz[[0, -1]]
             bbox = torch.tensor([cmin, rmin, cmax, rmax], dtype=torch.float32)
+
+            print('bbox', bbox)
 
             img_tensor = self.image_to_tensor(img[..., :3])
             img = img_tensor * mask + (
@@ -114,4 +123,11 @@ class MultiObjectDataset(torch.utils.data.Dataset):
             "bbox": bboxes,
             "poses": poses,
         }
+
+        print('bboxes.shape', bboxes.shape)
+        print('images.shape', imgs.shape)
+        # print('masks.shape', masks.shape)
+        # print('masks.max()', masks.max())
+        # print('masks.min()', masks.min())
+
         return result

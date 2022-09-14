@@ -67,6 +67,7 @@ def extra_args(parser):
     parser.add_argument('--use_eisen_seg', action='store_true')
     parser.add_argument('--small_dataset', action='store_true')
     parser.add_argument('--fixed_locality', action='store_true')
+    parser.add_argument('--fg_mask', action='store_true')
 
     return parser
 
@@ -267,6 +268,10 @@ class PixelNeRFTrainer(trainlib.Trainer):
             loss_dict["rf"] = fine_loss.item() * self.lambda_fine
 
         loss = rgb_loss
+        if torch.any(torch.isnan(loss)):
+            print(data['path'])
+            raise ValueError('loss becomes Nan')
+
         if is_train:
             loss.backward()
         loss_dict["t"] = loss.item()

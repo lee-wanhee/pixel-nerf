@@ -61,12 +61,21 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
 
         if want_val:
             opt.isTrain = False
-            # opt.dataroot = opt.dataroot.replace('train', 'test')
+            if 'tdw' in datadir:
+                opt.val_n_scenes = 600
+            elif 'bridge' in datadir:
+                opt.val_n_scenes = 50
+            else:
+                raise NotImplementedError
+            opt.dataroot = opt.dataroot.replace('train', 'val')
             val_set = dset_class(opt, **flags, **kwargs)
 
         if want_test:
+            # raise NotImplementedError('test is not implemented yet')
+            # TODO: check that this is not being used
             opt.isTrain = False
-            # opt.dataroot = opt.dataroot.replace('train', 'test')
+            opt.dataroot = opt.dataroot.replace('train', 'test')
+            print('want_test dataroot:', opt.dataroot)
             test_set = dset_class(opt, **flags, **kwargs)
 
         if want_split == "train":
