@@ -11,6 +11,8 @@ import os
 import os.path as osp
 import warnings
 
+import pdb
+
 
 class PixelNeRFNet(torch.nn.Module):
     def __init__(self, conf, stop_encoder_grad=False):
@@ -263,6 +265,11 @@ class PixelNeRFNet(torch.nn.Module):
             output_list = [torch.sigmoid(rgb), torch.relu(sigma)]
             output = torch.cat(output_list, dim=-1)
             output = output.reshape(SB, B, -1)
+
+            print('pixelnerf output is nan:', torch.any(torch.isnan(output)))
+            if torch.any(torch.isnan(output)):
+                breakpoint
+
         return output
 
     def load_weights(self, args, opt_init=False, strict=True, device=None):

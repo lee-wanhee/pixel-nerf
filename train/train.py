@@ -260,7 +260,13 @@ class PixelNeRFTrainer(trainlib.Trainer):
         # print('coarse.rgb.shape', coarse.rgb.shape)
         # print('all_rgb_gt.shape', all_rgb_gt.shape)
 
+        if torch.any(torch.isnan(coarse.rgb)):
+            print('coarse.rgb is nan')
+
         rgb_loss = self.rgb_coarse_crit(coarse.rgb, all_rgb_gt)
+        if torch.any(torch.isnan(rgb_loss)):
+            print('coarse loss is nan')
+
         loss_dict["rc"] = rgb_loss.item() * self.lambda_coarse
         if using_fine:
             fine_loss = self.rgb_fine_crit(fine.rgb, all_rgb_gt)
@@ -270,7 +276,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
         loss = rgb_loss
         if torch.any(torch.isnan(loss)):
             print(data['path'])
-            raise ValueError('loss becomes Nan')
+            breakpoint()
 
         if is_train:
             loss.backward()
