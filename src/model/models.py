@@ -266,9 +266,10 @@ class PixelNeRFNet(torch.nn.Module):
             output = torch.cat(output_list, dim=-1)
             output = output.reshape(SB, B, -1)
 
-            print('pixelnerf output is nan:', torch.any(torch.isnan(output)))
+
             if torch.any(torch.isnan(output)):
-                breakpoint
+                print('pixelnerf output is nan:', torch.any(torch.isnan(output)))
+                breakpoint()
 
         return output
 

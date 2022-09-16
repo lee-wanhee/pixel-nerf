@@ -278,8 +278,19 @@ class PixelNeRFTrainer(trainlib.Trainer):
             print(data['path'])
             breakpoint()
 
+        for n, p in net.named_parameters():
+            if torch.any(torch.isnan(p)):
+                print('net params isnan before loss_bkwd:', n)
+
         if is_train:
+            # print('==========loss bkwd===========')
             loss.backward()
+            # print('loss backward')
+
+        for n, p in net.named_parameters():
+            if torch.any(torch.isnan(p)):
+                print('net params isnan after loss_bkwd:', n)
+
         loss_dict["t"] = loss.item()
 
         return loss_dict
