@@ -274,22 +274,25 @@ class PixelNeRFTrainer(trainlib.Trainer):
             loss_dict["rf"] = fine_loss.item() * self.lambda_fine
 
         loss = rgb_loss
-        if torch.any(torch.isnan(loss)):
-            print(data['path'])
-            breakpoint()
 
-        for n, p in net.named_parameters():
-            if torch.any(torch.isnan(p)):
-                print('net params isnan before loss_bkwd:', n)
+        # for n, p in net.named_parameters():
+        #     if torch.any(torch.isnan(p)):
+        #         print('net params isnan before loss_bkwd:', n)
 
         if is_train:
             # print('==========loss bkwd===========')
-            loss.backward()
+            if torch.any(torch.isnan(loss)):
+                print('loss becomes nan before loss_bkwd')
+                print('data path are the following:', data['path'])
+            else:
+                loss.backward()
             # print('loss backward')
 
         for n, p in net.named_parameters():
             if torch.any(torch.isnan(p)):
                 print('net params isnan after loss_bkwd:', n)
+                breakpoint()
+
 
         loss_dict["t"] = loss.item()
 

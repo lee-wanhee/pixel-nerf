@@ -205,7 +205,7 @@ class PixelNeRFNet(torch.nn.Module):
 
             if self.use_encoder:
                 # Grab encoder's latent code.
-                uv = -xyz[:, :, :2] / xyz[:, :, 2:]  # (SB, B, 2)
+                uv = -xyz[:, :, :2] / (xyz[:, :, 2:] + 1e-5)  # (SB, B, 2)
                 uv *= repeat_interleave(
                     self.focal.unsqueeze(1), NS if self.focal.shape[0] > 1 else 1
                 )
@@ -269,7 +269,7 @@ class PixelNeRFNet(torch.nn.Module):
 
             if torch.any(torch.isnan(output)):
                 print('pixelnerf output is nan:', torch.any(torch.isnan(output)))
-                breakpoint()
+            #     breakpoint()
 
         return output
 
