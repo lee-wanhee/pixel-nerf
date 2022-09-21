@@ -54,6 +54,7 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
     want_val = want_split != "train" and want_split != "test"
     want_test = want_split != "train" and want_split != "val"
 
+    # breakpoint()
     if dataset_type.startswith("tdw"):
         if want_train:
             opt.isTrain = True
@@ -67,7 +68,8 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 opt.val_n_scenes = 50
             else:
                 raise NotImplementedError
-            opt.dataroot = opt.dataroot.replace('train', 'val')
+            opt.datadir = datadir.replace('train', 'val')
+            print('want_val', opt.datadir)
             val_set = dset_class(opt, **flags, **kwargs)
 
         if want_test:
@@ -80,8 +82,8 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 opt.val_n_scenes = 50
             else:
                 raise NotImplementedError
-            opt.dataroot = opt.dataroot.replace('train', 'test')
-            print('want_test dataroot:', opt.dataroot)
+            opt.datadir = datadir.replace('train', 'test')
+            print('want_test', opt.datadir)
             test_set = dset_class(opt, **flags, **kwargs)
 
         if want_split == "train":

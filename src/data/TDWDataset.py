@@ -138,7 +138,6 @@ class MultiscenesDataset(BaseDataset):
         scene_idx = index + self.skip
         scene_filenames = self._get_filenames(scene_idx)
 
-
         if self.opt.isTrain and not self.opt.no_shuffle:
             filenames = random.sample(scene_filenames, self.n_img_each_scene)
         else:
@@ -173,6 +172,7 @@ class MultiscenesDataset(BaseDataset):
             )
 
             pose = self._coord_trans_world @ torch.tensor(pose, dtype=torch.float32) @ self._coord_trans_cam
+
 
             if self.opt.fixed_locality:
                 azi_rot = np.eye(3)  # not used; placeholder

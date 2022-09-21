@@ -134,7 +134,7 @@ dset = get_split_dataset(
     args.dataset_format, args.datadir, want_split=args.split, training=False, opt=args
 )
 data_loader = torch.utils.data.DataLoader(
-    dset, batch_size=1, shuffle=False, num_workers=8, pin_memory=False, collate_fn=collate_fn
+    dset, batch_size=1, shuffle=False, num_workers=4, pin_memory=False, collate_fn=collate_fn
 )
 
 output_dir = args.output.strip()
@@ -261,6 +261,7 @@ with torch.no_grad():
                 )
             H, W = Ht, Wt
 
+        # breakpoint()
         if all_rays is None or use_source_lut or args.free_pose:
             if use_source_lut:
                 obj_id = cat_name + "/" + obj_basename
@@ -278,6 +279,7 @@ with torch.no_grad():
             c = data.get("c")
             if c is not None:
                 c = c[0].to(device=device).unsqueeze(0)
+
 
             poses = data["poses"][0]  # (NV, 4, 4)
             src_poses = poses[src_view_mask].to(device=device)  # (NS, 4, 4)
@@ -374,7 +376,7 @@ with torch.no_grad():
                 # psnr = skimage.measure.compare_psnr(
                 #     all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
                 # )
-                # breakpoint()
+
                 ssim = compare_ssim(
                     all_rgb[view_idx],
                     rgb_gt_all[view_idx],
@@ -386,6 +388,7 @@ with torch.no_grad():
                 )
                 curr_ssim += ssim
                 curr_psnr += psnr
+                print('psnr: ', psnr)
 
                 # breakpoint()
 
@@ -414,6 +417,17 @@ with torch.no_grad():
         total_ssim += curr_ssim
         total_lpips += curr_lpips
         cnt += curr_cnt
+
+        # breakpoint()
+        print('Visualizationg validation results')
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(2, 3, figsize=(8, 3))
+        for _ in range(3):
+            axs[0, _].imshow(rgb_gt_all[_])
+            axs[1, _].imshow(all_rgb[_])
+        plt.savefig(f'vis{cnt}.png')
+
+
         if not args.no_compare_gt:
             print(
                 "curr psnr",

@@ -182,7 +182,7 @@ def run_map():
     print("CATEGORICAL SUMMARY")
     total_objs = 0
 
-    breakpoint()
+    # breakpoint()
 
     for cat in cats:
         cat_root = osp.join(data_root, cat)

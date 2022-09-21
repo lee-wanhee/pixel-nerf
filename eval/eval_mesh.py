@@ -308,7 +308,7 @@ with torch.no_grad():
             poses = None
             focal = focal.to(device=device)
 
-        breakpoint()
+        # breakpoint()
 
         rays_spl = torch.split(all_rays, args.ray_batch_size, dim=0)  # Creates views
 
@@ -339,7 +339,7 @@ with torch.no_grad():
 
         all_rgb, all_depth = [], []
         for rays in tqdm.tqdm(rays_spl):
-            breakpoint()
+            # breakpoint()
             rgb, depth = render_par(rays[None])
             rgb = rgb[0].cpu()
             depth = depth[0].cpu()

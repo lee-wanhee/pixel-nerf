@@ -240,6 +240,8 @@ class NeRFRenderer(torch.nn.Module):
             depth_final = torch.sum(weights * z_samp, -1)  # (B)
             if self.white_bkgd:
                 # White background
+                print('white bg')
+                # breakpoint()
                 pix_alpha = weights.sum(dim=1)  # (B), pixel alpha
                 rgb_final = rgb_final + 1 - pix_alpha.unsqueeze(-1)  # (B, 3)
             return (
