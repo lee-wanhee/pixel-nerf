@@ -115,6 +115,8 @@ def extra_args(parser):
     parser.add_argument('--fixed_locality', action='store_true')
     parser.add_argument('--fg_mask', action='store_true')
 
+    parser.add_argument('--debug_vis_path', type=str, default='./vis')
+
     return parser
 
 
@@ -262,7 +264,8 @@ with torch.no_grad():
             H, W = Ht, Wt
 
         # breakpoint()
-        if all_rays is None or use_source_lut or args.free_pose:
+        if True:
+        # if all_rays is None or use_source_lut or args.free_pose:
             if use_source_lut:
                 obj_id = cat_name + "/" + obj_basename
                 source = source_lut[obj_id]
@@ -425,7 +428,11 @@ with torch.no_grad():
         for _ in range(3):
             axs[0, _].imshow(rgb_gt_all[_])
             axs[1, _].imshow(all_rgb[_])
-        plt.savefig(f'vis{cnt}.png')
+
+        isExist = os.path.exists(args.debug_vis_path)
+        if not isExist:
+            os.makedirs(args.debug_vis_path)
+        plt.savefig(f'{args.debug_vis_path}/vis{cnt}.png')
 
 
         if not args.no_compare_gt:
