@@ -20,6 +20,10 @@ import torch
 import imageio
 import json
 
+from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+from skimage.metrics import structural_similarity as compare_ssim
+import pdb
+
 parser = argparse.ArgumentParser(description="Calculate PSNR for rendered images.")
 parser.add_argument(
     "--datadir",
@@ -95,6 +99,24 @@ parser.add_argument(
 parser.add_argument(
     "--dtu_sort", action="store_true", help="Sort using DTU scene order instead of lex"
 )
+
+parser.set_defaults(input_nc=3, output_nc=3)
+parser.add_argument('--n_scenes', type=int, default=1000, help='dataset length is #scenes')
+parser.add_argument('--n_img_each_scene', type=int, default=4,
+                    help='for each scene, how many images to load in a batch')
+parser.add_argument('--no_shuffle', action='store_true')
+parser.add_argument('--mask_size', type=int, default=128)
+parser.add_argument('--load_size', type=int, default=128)
+parser.add_argument('--frame5', action='store_true')
+parser.add_argument('--skip', type=int, default=0)
+parser.add_argument('--dataset_nearest_interp', action='store_true')
+parser.add_argument('--dataset_combine_masks', action='store_true')
+parser.add_argument('--color_jitter', action='store_true')
+parser.add_argument('--use_eisen_seg', action='store_true')
+parser.add_argument('--small_dataset', action='store_true')
+parser.add_argument('--fixed_locality', action='store_true')
+parser.add_argument('--fg_mask', action='store_true')
+
 args = parser.parse_args()
 
 
@@ -106,6 +128,10 @@ elif args.dataset_format == "srn":
     img_dir_name = "rgb"
 elif args.dataset_format == "nerf":
     warnings.warn("test split not implemented for NeRF synthetic data format")
+    list_name = ""
+    img_dir_name = ""
+elif args.dataset_format == 'tdw':
+    warnings.warn('tdw not implemented in the original calc_metrics.py')
     list_name = ""
     img_dir_name = ""
 else:
@@ -156,6 +182,8 @@ def run_map():
     print("CATEGORICAL SUMMARY")
     total_objs = 0
 
+    breakpoint()
+
     for cat in cats:
         cat_root = osp.join(data_root, cat)
         if not osp.isdir(cat_root):
@@ -186,8 +214,10 @@ def run_map():
     lpips_vgg = lpips.LPIPS(net="vgg").to(device=cuda)
 
     def get_metrics(rgb, gt):
-        ssim = skimage.measure.compare_ssim(rgb, gt, multichannel=True, data_range=1)
-        psnr = skimage.measure.compare_psnr(rgb, gt, data_range=1)
+        # ssim = skimage.measure.compare_ssim(rgb, gt, multichannel=True, data_range=1)
+        # psnr = skimage.measure.compare_psnr(rgb, gt, data_range=1)
+        ssim = compare_ssim(rgb, gt, multichannel=True, data_range=1)
+        psnr = compare_psnr(rgb, gt, data_range=1)
         return psnr, ssim
 
     def isimage(path):

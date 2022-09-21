@@ -40,6 +40,7 @@ def marching_cubes(
             "Running marching cubes with fake view dirs (pointing to origin), output may be invalid"
         )
     with torch.no_grad():
+        # breakpoint()
         grid = util.gen_grid(*zip(c1, c2, reso), ij_indexing=True)
         is_train = occu_net.training
 
@@ -54,8 +55,10 @@ def marching_cubes(
             fake_viewdirs = -grid / torch.norm(grid, dim=-1).unsqueeze(-1)
             vd_spl = torch.split(fake_viewdirs, eval_batch_size, dim=0)
             for pnts, vd in tqdm.tqdm(zip(grid_spl, vd_spl), total=len(grid_spl)):
+                print('pnts.shape', pnts.shape)
+                # breakpoint()
                 outputs = occu_net(
-                    pnts.to(device=device), coarse=coarse, viewdirs=vd.to(device=device)
+                    pnts[None, ...].to(device=device), coarse=coarse, viewdirs=vd[None, ...].to(device=device)
                 )
                 sigmas = outputs[..., sigma_idx]
                 all_sigmas.append(sigmas.cpu())
@@ -104,3 +107,4 @@ def save_obj(vertices, triangles, path, vert_rgb=None):
         f_plus = f + 1
         file.write("f %d %d %d\n" % (f_plus[0], f_plus[1], f_plus[2]))
     file.close()
+    print('mesh saved')

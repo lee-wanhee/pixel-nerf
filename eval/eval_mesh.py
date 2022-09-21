@@ -5,6 +5,7 @@ python eval.py --gpu_id=<gpu list> -n <expname> -c <conf> -D /home/group/data/ch
 """
 import sys
 import os
+import pdb
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -307,6 +308,8 @@ with torch.no_grad():
             poses = None
             focal = focal.to(device=device)
 
+        breakpoint()
+
         rays_spl = torch.split(all_rays, args.ray_batch_size, dim=0)  # Creates views
 
         n_gen_views = len(novel_view_idxs)
@@ -318,8 +321,25 @@ with torch.no_grad():
             c=c,
         )
 
+        # breakpoint()
+        vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+                                c1=[-2.5, -2.5, -5],
+                                c2=[2.5, 2.5, 0],
+                                reso=[128, 128, 128],
+                                isosurface=10.0,
+                                sigma_idx=3,
+                                eval_batch_size=128*128,
+                                coarse=True,
+                                device=None,)
+        util.recon.save_obj(vertices=vertices_c1,
+                            triangles=triangles,
+                            path='temp.obj',
+                            vert_rgb=None)
+
+
         all_rgb, all_depth = [], []
         for rays in tqdm.tqdm(rays_spl):
+            breakpoint()
             rgb, depth = render_par(rays[None])
             rgb = rgb[0].cpu()
             depth = depth[0].cpu()

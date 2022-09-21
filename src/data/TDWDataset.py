@@ -46,7 +46,9 @@ class MultiscenesDataset(BaseDataset):
         self.lindisp = False
         opt.dataroot = opt.datadir
         opt.num_slots = 4
-        opt.val_n_scenes = 4
+        opt.val_n_scenes = 600
+
+        print('TDW dataset initialized')
 
         BaseDataset.__init__(self, opt)
 
@@ -392,7 +394,6 @@ def collate_fn(batch):
         obj_masks = torch.stack([x['obj_masks'].squeeze(1) for x in flat_batch])
         ret['obj_masks'] = obj_masks
         ret['obj_seg_colors'] = torch.stack([x['obj_seg_colors'] for x in flat_batch])
-        ret['bboxes'] = torch.stack([x['bbox'] for x in flat_batch])
 
     # added for pixelnerf
     # print("ret['img_data'].shape", ret['img_data'].shape)
@@ -409,6 +410,7 @@ def collate_fn(batch):
 
     # dtype float32 # 0.9605 tdw / 0.7703 bridge
     if flat_batch[0]['use_fg_mask']:
+        ret['bboxes'] = torch.stack([x['bbox'] for x in flat_batch])
         masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV / SB), 1, H, W)
         images = ret['img_data'].view(SB, int(SBNV / SB), 3, H, W)
         images  = images * masks + (1. - masks) * torch.ones_like(images)
