@@ -247,6 +247,7 @@ def gen_rays(poses, width, height, focal, z_near, z_far, c=None, ndc=False):
         .unsqueeze(0)
         .repeat(num_images, 1, 1, 1)
     )
+    # breakpoint()
     cam_centers = poses[:, None, None, :3, 3].expand(-1, height, width, -1)
     cam_raydir = torch.matmul(
         poses[:, None, None, :3, :3], cam_unproj_map.unsqueeze(-1)

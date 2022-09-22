@@ -201,6 +201,7 @@ class NeRFRenderer(torch.nn.Module):
             split_points = torch.split(points, eval_batch_size, dim=eval_batch_dim)
             if use_viewdirs:
                 dim1 = K
+                # breakpoint()
                 viewdirs = rays[:, None, 3:6].expand(-1, dim1, -1)  # (B, K, 3)
                 if sb > 0:
                     viewdirs = viewdirs.reshape(sb, -1, 3)  # (SB, B'*K, 3)
@@ -210,6 +211,7 @@ class NeRFRenderer(torch.nn.Module):
                     viewdirs, eval_batch_size, dim=eval_batch_dim
                 )
                 for pnts, dirs in zip(split_points, split_viewdirs):
+                    # breakpoint()
                     val_all.append(model(pnts, coarse=coarse, viewdirs=dirs))
             else:
                 for pnts in split_points:

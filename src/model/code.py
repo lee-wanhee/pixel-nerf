@@ -10,6 +10,7 @@ class PositionalEncoding(torch.nn.Module):
 
     def __init__(self, num_freqs=6, d_in=3, freq_factor=np.pi, include_input=True):
         super().__init__()
+        # breakpoint()
         self.num_freqs = num_freqs
         self.d_in = d_in
         self.freqs = freq_factor * 2.0 ** torch.arange(0, num_freqs)
@@ -33,6 +34,7 @@ class PositionalEncoding(torch.nn.Module):
         :param x (batch, self.d_in)
         :return (batch, self.d_out)
         """
+        # breakpoint()
         with profiler.record_function("positional_enc"):
             embed = x.unsqueeze(1).repeat(1, self.num_freqs * 2, 1)
             embed = torch.sin(torch.addcmul(self._phases, embed, self._freqs))

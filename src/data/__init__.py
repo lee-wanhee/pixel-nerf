@@ -54,6 +54,9 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
     want_val = want_split != "train" and want_split != "test"
     want_test = want_split != "train" and want_split != "val"
 
+    print(want_train, 'want_train')
+    print(want_val, 'want_val')
+    print(want_test, 'want_test')
     # breakpoint()
     if dataset_type.startswith("tdw"):
         if want_train:
@@ -62,10 +65,14 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
 
         if want_val:
             opt.isTrain = False
+            print(datadir)
             if 'tdw' in datadir:
                 opt.val_n_scenes = 600
+                opt.n_scenes = 600
             elif 'bridge' in datadir:
                 opt.val_n_scenes = 50
+                opt.n_scenes = 50
+                print(f"'bridge' in {datadir}")
             else:
                 raise NotImplementedError
             opt.datadir = datadir.replace('train', 'val')
@@ -76,9 +83,12 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
             # raise NotImplementedError('test is not implemented yet')
             # TODO: check that this is not being used
             opt.isTrain = False
+            opt.skip = 0
             if 'tdw' in datadir:
+                opt.n_scenes = 600
                 opt.val_n_scenes = 600
             elif 'bridge' in datadir:
+                opt.n_scenes = 50
                 opt.val_n_scenes = 50
             else:
                 raise NotImplementedError

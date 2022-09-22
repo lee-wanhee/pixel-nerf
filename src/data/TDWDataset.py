@@ -135,7 +135,10 @@ class MultiscenesDataset(BaseDataset):
         Parameters:
             index - - a random integer for data indexing, here it is scene_idx
         """
-        scene_idx = index + self.skip
+        if 'train' in self.dataroot:
+            scene_idx = index + self.skip
+        else:
+            scene_idx = index
         scene_filenames = self._get_filenames(scene_idx)
 
         if self.opt.isTrain and not self.opt.no_shuffle:

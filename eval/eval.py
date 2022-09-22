@@ -424,8 +424,11 @@ with torch.no_grad():
         # breakpoint()
         print('Visualizationg validation results')
         import matplotlib.pyplot as plt
-        fig, axs = plt.subplots(2, 3, figsize=(8, 3))
-        for _ in range(3):
+        n = 2
+        if args.include_src:
+            n += 1
+        fig, axs = plt.subplots(2, n, figsize=(8, 3))
+        for _ in range(n):
             axs[0, _].imshow(rgb_gt_all[_])
             axs[1, _].imshow(all_rgb[_])
 
@@ -434,7 +437,7 @@ with torch.no_grad():
             os.makedirs(args.debug_vis_path)
         plt.savefig(f'{args.debug_vis_path}/vis{cnt}.png')
 
-
+        print('cnt', cnt)
         if not args.no_compare_gt:
             print(
                 "curr psnr",
@@ -453,4 +456,5 @@ with torch.no_grad():
         finish_file.write(
             "{} {} {} {}\n".format(obj_name, curr_psnr, curr_ssim, curr_lpips, curr_cnt)
         )
+        print('cnt', cnt)
 print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt)

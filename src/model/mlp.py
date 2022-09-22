@@ -3,6 +3,8 @@ from torch import nn
 import numpy as np
 import util
 
+import pdb
+
 
 class ImplicitNet(nn.Module):
     """
@@ -55,6 +57,10 @@ class ImplicitNet(nn.Module):
         self.combine_layer = combine_layer
         self.combine_type = combine_type
 
+        print('dims:', dims)
+        print('num_layers:', len(dims))
+        breakpoint()
+
         for layer in range(0, self.num_layers - 1):
             if layer + 1 in skip_in:
                 out_dim = dims[layer + 1] - d_in
@@ -103,11 +109,21 @@ class ImplicitNet(nn.Module):
         Tensor will be reshaped to (-1, combine_inner_dims, ...) and reduced using combine_type
         on dim 1, at combine_layer
         """
+        # breakpoint()
+        print(self.num_layers)
+        self.skip_in = skip_in
+        self.dims = dims
+        self.combine_layer = combine_layer
+        self.combine_type = combine_type
+
         x_init = x
         for layer in range(0, self.num_layers - 1):
             lin = getattr(self, "lin" + str(layer))
 
+
+            breakpoint()
             if layer == self.combine_layer:
+                breakpoint()
                 x = util.combine_interleaved(x, combine_inner_dims, self.combine_type)
                 x_init = util.combine_interleaved(
                     x_init, combine_inner_dims, self.combine_type

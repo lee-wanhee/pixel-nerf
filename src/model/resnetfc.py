@@ -18,6 +18,7 @@ class ResnetBlockFC(nn.Module):
 
     def __init__(self, size_in, size_out=None, size_h=None, beta=0.0):
         super().__init__()
+        # breakpoint()
         # Attributes
         if size_out is None:
             size_out = size_in
@@ -51,6 +52,7 @@ class ResnetBlockFC(nn.Module):
             nn.init.kaiming_normal_(self.shortcut.weight, a=0, mode="fan_in")
 
     def forward(self, x):
+        # breakpoint()
         with profiler.record_function("resblock"):
             net = self.fc_0(self.activation(x))
             dx = self.fc_1(self.activation(net))
@@ -84,6 +86,7 @@ class ResnetFC(nn.Module):
         :param beta softplus beta, 100 is reasonable; if <=0 uses ReLU activations instead
         """
         super().__init__()
+        # breakpoint()
         if d_in > 0:
             self.lin_in = nn.Linear(d_in, d_hidden)
             nn.init.constant_(self.lin_in.bias, 0.0)
@@ -136,6 +139,7 @@ class ResnetFC(nn.Module):
         Tensor will be reshaped to (-1, combine_inner_dims, ...) and reduced using combine_type
         on dim 1, at combine_layer
         """
+        # breakpoint()
         with profiler.record_function("resnetfc_infer"):
             assert zx.size(-1) == self.d_latent + self.d_in
             if self.d_latent > 0:
@@ -167,6 +171,7 @@ class ResnetFC(nn.Module):
                     #          reduce=combine_type,
                     #      )
                     #  else:
+                    # breakpoint()
                     x = util.combine_interleaved(
                         x, combine_inner_dims, self.combine_type
                     )
@@ -186,6 +191,7 @@ class ResnetFC(nn.Module):
     @classmethod
     def from_conf(cls, conf, d_in, **kwargs):
         # PyHocon construction
+        # breakpoint()
         return cls(
             d_in,
             n_blocks=conf.get_int("n_blocks", 5),

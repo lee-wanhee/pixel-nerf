@@ -181,6 +181,7 @@ class PixelNeRFNet(torch.nn.Module):
 
                 if self.use_code and not self.use_code_viewdirs:
                     # Positional encoding (no viewdirs)
+                    # print('# Positional encoding (no coding viewdirs)')
                     z_feature = self.code(z_feature)
 
                 if self.use_viewdirs:
@@ -189,6 +190,7 @@ class PixelNeRFNet(torch.nn.Module):
                     # Viewdirs to input view space
                     viewdirs = viewdirs.reshape(SB, B, 3, 1)
                     viewdirs = repeat_interleave(viewdirs, NS)  # (SB*NS, B, 3, 1)
+                    # breakpoint()
                     viewdirs = torch.matmul(
                         self.poses[:, None, :3, :3], viewdirs
                     )  # (SB*NS, B, 3, 1)
@@ -199,6 +201,8 @@ class PixelNeRFNet(torch.nn.Module):
 
                 if self.use_code and self.use_code_viewdirs:
                     # Positional encoding (with viewdirs)
+                    # breakpoint()
+                    # print('Positional encoding (with viewdirs)')
                     z_feature = self.code(z_feature)
 
                 mlp_input = z_feature
@@ -241,6 +245,8 @@ class PixelNeRFNet(torch.nn.Module):
             dim_size = None
 
             # Run main NeRF network
+            # breakpoint()
+            # decoder
             if coarse or self.mlp_fine is None:
                 mlp_output = self.mlp_coarse(
                     mlp_input,
