@@ -85,9 +85,11 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
             opt.isTrain = False
             opt.skip = 0
             if 'tdw' in datadir:
+                print(f'tdw in {datadir}')
                 opt.n_scenes = 600
                 opt.val_n_scenes = 600
             elif 'bridge' in datadir:
+                print(f'bridge in {datadir}')
                 opt.n_scenes = 50
                 opt.val_n_scenes = 50
             else:

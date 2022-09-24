@@ -9,3 +9,4 @@ python train/train.py -n bridge_train_try4 -c conf/exp/tdw.conf \
     # CUDA 4,5,6,7
     # 4096 * 2 = 8192
     # --resume
+

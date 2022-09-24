@@ -115,6 +115,7 @@ def extra_args(parser):
     parser.add_argument('--small_dataset', action='store_true')
     parser.add_argument('--fixed_locality', action='store_true')
     parser.add_argument('--fg_mask', action='store_true')
+    parser.add_argument('--mesh_eval', action='store_true')
 
     return parser
 
@@ -321,20 +322,57 @@ with torch.no_grad():
             c=c,
         )
 
+        transform = np.array([[0, 1, 0],
+                              [-1, 0, 0],
+                              [0, 0, 1]])[None, ...]
+
         # breakpoint()
+        if True:
+            assert data['masks'].shape[0] == 1
+            masks = data['masks'][0, 0:1] #.view(SB, int(SBNV/SB), 1, H, W)
+            src_pose = src_poses.view(1, 4, 4)
+
+            vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+                                    c1=[-2.5, -2.5, -5],
+                                    c2=[2.5, 2.5, 0],
+                                    reso=[128, 128, 128],
+                                    isosurface=10.0,
+                                    sigma_idx=3,
+                                    eval_batch_size=128*128,
+                                    coarse=True,
+                                    device=None, masks=masks, src_pose=src_pose)
+
+            vertices_c1 = np.matmul(transform, vertices_c1[..., None])[..., 0]
+
+            util.recon.save_obj(vertices=vertices_c1, triangles=triangles, path='mesh_masked.obj', vert_rgb=None)
+
+            # breakpoint()
+
+        masks = None
+        src_pose = None
+
+
+
         vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
-                                c1=[-2.5, -2.5, -5],
-                                c2=[2.5, 2.5, 0],
-                                reso=[128, 128, 128],
-                                isosurface=10.0,
-                                sigma_idx=3,
-                                eval_batch_size=128*128,
-                                coarse=True,
-                                device=None,)
-        util.recon.save_obj(vertices=vertices_c1,
-                            triangles=triangles,
-                            path='temp.obj',
+                                                           c1=[-2.5, -2.5, -5],
+                                                           c2=[2.5, 2.5, 0],
+                                                           reso=[128, 128, 128],
+                                                           isosurface=10.0,
+                                                           sigma_idx=3,
+                                                           eval_batch_size=128 * 128,
+                                                           coarse=True,
+                                                           device=None, masks=masks, src_pose=src_pose)
+
+        # breakpoint()
+
+        vertices_c1_ = np.matmul(transform, vertices_c1[..., None])[..., 0]
+
+        util.recon.save_obj(vertices=vertices_c1_, \
+                            triangles=triangles, \
+                            path='mesh_unmasked.obj', \
                             vert_rgb=None)
+
+        breakpoint()
 
 
         all_rgb, all_depth = [], []

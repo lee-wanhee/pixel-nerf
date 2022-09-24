@@ -128,6 +128,8 @@ class PixelNeRFNet(torch.nn.Module):
             focal = focal.unsqueeze(-1).repeat((1, 2))
         else:
             focal = focal.clone()
+
+        # breakpoint()
         self.focal = focal.float()
         self.focal[..., 1] *= -1.0
 
@@ -140,7 +142,9 @@ class PixelNeRFNet(torch.nn.Module):
         elif len(c.shape) == 1:
             # Vector c: cx = cy = c_i *for view i*
             c = c.unsqueeze(-1).repeat((1, 2))
+        # breakpoint()
         self.c = c
+
 
         if self.use_global_encoder:
             self.global_encoder(images)

@@ -88,14 +88,18 @@ class SpatialEncoder(nn.Module):
         :return (B, L, N) L is latent size
         """
         with profiler.record_function("encoder_index"):
-            if uv.shape[0] == 1 and self.latent.shape[0] > 1:
+            # breakpoint()
+            if uv.shape[0] == 1 and self.latent.shape[0] > 1: # This is False
                 uv = uv.expand(self.latent.shape[0], -1, -1)
 
+            # breakpoint()
             with profiler.record_function("encoder_index_pre"):
                 if len(image_size) > 0:
-                    if len(image_size) == 1:
+                    if len(image_size) == 1: # False. image size == 2
                         image_size = (image_size, image_size)
-                    scale = self.latent_scaling / image_size
+                    scale = self.latent_scaling / image_size # Surprisingly, this was being used!
+                    # self.latent_scaling tensor([2.0317, 2.0317], device='cuda:0')
+                    # scale tensor([0.0159, 0.0159], device='cuda:0')
                     uv = uv * scale - 1.0
 
             uv = uv.unsqueeze(2)  # (B, N, 1, 2)
@@ -114,6 +118,7 @@ class SpatialEncoder(nn.Module):
         :param x image (B, C, H, W)
         :return latent (B, latent_size, H, W)
         """
+        # breakpoint()
         if self.feature_scale != 1.0:
             x = F.interpolate(
                 x,
