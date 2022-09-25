@@ -22,7 +22,7 @@ def marching_cubes(
     sigma_idx=3,
     eval_batch_size=100000,
     coarse=True,
-    device=None, masks=None, src_pose=None
+    device=None, masks=None, src_pose=None, obj_idx=0,
 ):
     """
     Run marching cubes on network. Uses PyMCubes.
@@ -39,10 +39,10 @@ def marching_cubes(
     :param device optionally, device to put points for evaluation.
     By default uses device of occu_net's first parameter.
     """
-    if occu_net.use_viewdirs:
-        warnings.warn(
-            "Running marching cubes with fake view dirs (pointing to origin), output may be invalid"
-        )
+    # if occu_net.use_viewdirs:
+    #     warnings.warn(
+    #         "Running marching cubes with fake view dirs (pointing to origin), output may be invalid"
+    #     )
     with torch.no_grad():
         # breakpoint()
         if device is None:
@@ -52,7 +52,7 @@ def marching_cubes(
         grid_n_one = torch.concat([grid, torch.ones([grid.shape[0], 1])], dim=-1)[..., None].to(device).clone()
         is_train = occu_net.training
 
-        print("Evaluating sigma @", grid.size(0), "points")
+        # print("Evaluating sigma @", grid.size(0), "points")
         occu_net.eval()
 
         temp_idx = 0
@@ -62,7 +62,7 @@ def marching_cubes(
             fake_viewdirs = -grid / torch.norm(grid, dim=-1).unsqueeze(-1)
             vd_spl = torch.split(fake_viewdirs, eval_batch_size, dim=0)
             for pnts, vd in tqdm.tqdm(zip(grid_spl, vd_spl), total=len(grid_spl)):
-                print('pnts.shape', pnts.shape)
+                # print('pnts.shape', pnts.shape)
                 # breakpoint()
                 outputs = occu_net(
                     pnts[None, ...].to(device=device), coarse=coarse, viewdirs=vd[None, ...].to(device=device)
@@ -82,18 +82,19 @@ def marching_cubes(
         sigmas = sigmas.view(*reso)
         # x_index = torch.logical_and(grid[..., 0] < 2.5, grid[..., 0] > -0.5)
         # y_index = torch.logical_and(grid[..., 1] < 2.5, grid[..., 1] > -0.5)
-        # pick_some_xy_index = torch.logical_and(x_index, y_index)
-        # # sigmas.view(128, 128, 128)[:, :, :] = 0.0
-        # sigmas *= pick_some_xy_index.view(*reso)
+        dist_xy = torch.sqrt(grid[..., 0]**2 + grid[..., 1]**2)
+        pick_some_xy_index = torch.logical_and(dist_xy > -1.5, dist_xy < 1.5)
+        # sigmas.view(128, 128, 128)[:, :, :] = 0.0
+        sigmas *= pick_some_xy_index.view(*reso)
         sigmas = sigmas.cpu().numpy()
 
         if masks != None:
             masks = masks.to(device)
 
-            masks = torch.zeros_like(masks)
-            temp = masks.view(128, 128)[:, :]
-            temp = torch.ones_like(temp)
-            masks.view(128, 128)[:, :] = temp
+            # masks = torch.zeros_like(masks)
+            # temp = masks.view(128, 128)[:, :]
+            # temp = torch.ones_like(temp)
+            # masks.view(128, 128)[:, :] = temp
 
             # masks = torch.zeros_like(masks)
             # temp = masks.view(128, 128)[:, 64:]
@@ -126,7 +127,6 @@ def marching_cubes(
             # focal = torch.tensor([[64., -64]], device='cuda:0')
             c = torch.tensor([[64., 64.]], device='cuda:0')
 
-            # breakpoint()
 
             # (Pdb)
             # self.latent_scaling / image_size
@@ -204,7 +204,8 @@ def marching_cubes(
             inside_mask = samples[:, :, :, 0].permute(0, 2, 1)  # (B, C, N)
 
             inside_mask = inside_mask.view([128, 128, 128])# TODO: check this permutation
-            sigmas *= inside_mask.cpu().numpy()
+            # sigmas *= inside_mask.cpu().numpy()
+            sigmas += inside_mask.cpu().numpy() * 100
 
         print("Running marching cubes")
         vertices, triangles = mcubes.marching_cubes(sigmas, isosurface)
@@ -243,4 +244,4 @@ def save_obj(vertices, triangles, path, vert_rgb=None):
         f_plus = f + 1
         file.write("f %d %d %d\n" % (f_plus[0], f_plus[1], f_plus[2]))
     file.close()
-    print('mesh saved')
+    print('mesh saved', path)

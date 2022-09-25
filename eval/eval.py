@@ -181,6 +181,7 @@ net = make_model(conf["model"]).to(device=device).load_weights(args)
 renderer = NeRFRenderer.from_conf(
     conf["renderer"], lindisp=dset.lindisp, eval_batch_size=args.ray_batch_size
 ).to(device=device)
+# breakpoint()
 if args.coarse:
     net.mlp_fine = None
 
@@ -424,18 +425,27 @@ with torch.no_grad():
         # breakpoint()
         print('Visualizationg validation results')
         import matplotlib.pyplot as plt
-        n = 2
+        n = 3
         if args.include_src:
             n += 1
-        fig, axs = plt.subplots(2, n, figsize=(8, 3))
+        fig, axs = plt.subplots(2, n, figsize=(8, 4))
+        plt.axis('off')
         for _ in range(n):
             axs[0, _].imshow(rgb_gt_all[_])
+            axs[0, _].axis('off')
             axs[1, _].imshow(all_rgb[_])
+            axs[1, _].axis('off')
 
         isExist = os.path.exists(args.debug_vis_path)
         if not isExist:
             os.makedirs(args.debug_vis_path)
-        plt.savefig(f'{args.debug_vis_path}/vis{cnt}.png')
+        plt.axis('off')
+        plt.savefig(f'{args.debug_vis_path}/vis{cnt-1}.svg', format='svg', dpi=300)
+        # TODO: Warning! png and svg has different indexing
+        # plt.savefig(f'{args.debug_vis_path}/vis{cnt}.png')
+
+        # fig.savefig('myimage.svg', format='svg', dpi=300)
+        #
 
         print('cnt', cnt)
         if not args.no_compare_gt:

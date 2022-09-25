@@ -75,7 +75,8 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 print(f"'bridge' in {datadir}")
             else:
                 raise NotImplementedError
-            opt.datadir = datadir.replace('train', 'val')
+            if 'train' in datadir:
+                opt.datadir = datadir.replace('train', 'val')
             print('want_val', opt.datadir)
             val_set = dset_class(opt, **flags, **kwargs)
 
@@ -94,7 +95,8 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 opt.val_n_scenes = 50
             else:
                 raise NotImplementedError
-            opt.datadir = datadir.replace('train', 'test')
+            if 'train' in datadir:
+                opt.datadir = datadir.replace('train', 'test')
             print('want_test', opt.datadir)
             test_set = dset_class(opt, **flags, **kwargs)
 

@@ -116,6 +116,9 @@ def extra_args(parser):
     parser.add_argument('--fixed_locality', action='store_true')
     parser.add_argument('--fg_mask', action='store_true')
     parser.add_argument('--mesh_eval', action='store_true')
+    parser.add_argument('--z_limit', type=float, default=4.5)
+    parser.add_argument('--isosurface', type=int, default=30)
+    parser.add_argument('--coarse_mesh', action='store_true')
 
     return parser
 
@@ -181,6 +184,7 @@ net = make_model(conf["model"]).to(device=device).load_weights(args)
 renderer = NeRFRenderer.from_conf(
     conf["renderer"], lindisp=dset.lindisp, eval_batch_size=args.ray_batch_size
 ).to(device=device)
+# breakpoint()
 if args.coarse:
     net.mlp_fine = None
 
@@ -263,7 +267,8 @@ with torch.no_grad():
                 )
             H, W = Ht, Wt
 
-        if all_rays is None or use_source_lut or args.free_pose:
+        # if all_rays is None or use_source_lut or args.free_pose:
+        if True:
             if use_source_lut:
                 obj_id = cat_name + "/" + obj_basename
                 source = source_lut[obj_id]
@@ -326,168 +331,178 @@ with torch.no_grad():
                               [-1, 0, 0],
                               [0, 0, 1]])[None, ...]
 
+        # # breakpoint()
+        # if False:
+        #     assert data['masks'].shape[0] == 1
+        #     masks = data['masks'][0, 0:1] #.view(SB, int(SBNV/SB), 1, H, W)
+        #     src_pose = src_poses.view(1, 4, 4)
+        #
+        #     vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+        #                             c1=[-2.5, -2.5, -5],
+        #                             c2=[2.5, 2.5, -0],
+        #                             reso=[128, 128, 128],
+        #                             isosurface=10.0,
+        #                             sigma_idx=3,
+        #                             eval_batch_size=128*128,
+        #                             coarse=True,
+        #                             device=None, masks=masks, src_pose=src_pose)
+        #
+        #     vertices_c1 = np.matmul(transform, vertices_c1[..., None])[..., 0]
+        #
+        #     util.recon.save_obj(vertices=vertices_c1, triangles=triangles, path='mesh_masked.obj', vert_rgb=None)
+
         # breakpoint()
-        if True:
-            assert data['masks'].shape[0] == 1
-            masks = data['masks'][0, 0:1] #.view(SB, int(SBNV/SB), 1, H, W)
-            src_pose = src_poses.view(1, 4, 4)
-
-            vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
-                                    c1=[-2.5, -2.5, -5],
-                                    c2=[2.5, 2.5, 0],
-                                    reso=[128, 128, 128],
-                                    isosurface=10.0,
-                                    sigma_idx=3,
-                                    eval_batch_size=128*128,
-                                    coarse=True,
-                                    device=None, masks=masks, src_pose=src_pose)
-
-            vertices_c1 = np.matmul(transform, vertices_c1[..., None])[..., 0]
-
-            util.recon.save_obj(vertices=vertices_c1, triangles=triangles, path='mesh_masked.obj', vert_rgb=None)
-
-            # breakpoint()
 
         masks = None
         src_pose = None
 
-
-
+        isosurface = args.isosurface
+        c1_3 = -args.z_limit
+        c2_3 = c1_3 + 3
+        coarse_mesh = args.coarse_mesh
+        assert coarse_mesh == False
         vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
-                                                           c1=[-2.5, -2.5, -5],
-                                                           c2=[2.5, 2.5, 0],
-                                                           reso=[128, 128, 128],
-                                                           isosurface=10.0,
+                                                           c1=[-1.5, -1.5, c1_3],
+                                                           c2=[1.5, 1.5, c2_3],
+                                                           reso=[256, 256, 256],
+                                                           isosurface=isosurface,
                                                            sigma_idx=3,
-                                                           eval_batch_size=128 * 128,
-                                                           coarse=True,
-                                                           device=None, masks=masks, src_pose=src_pose)
+                                                           eval_batch_size=128 * 128 * 32,#128 * 128 * 64,
+                                                           coarse=coarse_mesh,
+                                                           device=None, masks=masks, src_pose=src_pose, obj_idx=obj_idx)
 
         # breakpoint()
 
         vertices_c1_ = np.matmul(transform, vertices_c1[..., None])[..., 0]
 
+        if 'val' in args.datadir:
+            mode = 'val'
+        elif 'test' in args.datadir:
+            mode = 'test'
+        else:
+            raise NotImplementedError
+
         util.recon.save_obj(vertices=vertices_c1_, \
                             triangles=triangles, \
-                            path='mesh_unmasked.obj', \
+                            path=f'fg_mesh_{mode}/fg_mesh_{obj_idx:06d}_{-c1_3:.1f}_{isosurface:02d}.obj', \
                             vert_rgb=None)
 
-        breakpoint()
+        # breakpoint()
 
-
-        all_rgb, all_depth = [], []
-        for rays in tqdm.tqdm(rays_spl):
-            # breakpoint()
-            rgb, depth = render_par(rays[None])
-            rgb = rgb[0].cpu()
-            depth = depth[0].cpu()
-            all_rgb.append(rgb)
-            all_depth.append(depth)
-
-        all_rgb = torch.cat(all_rgb, dim=0)
-        all_depth = torch.cat(all_depth, dim=0)
-        all_depth = (all_depth - z_near) / (z_far - z_near)
-        all_depth = all_depth.reshape(n_gen_views, H, W).numpy()
-
-        all_rgb = torch.clamp(
-            all_rgb.reshape(n_gen_views, H, W, 3), 0.0, 1.0
-        ).numpy()  # (NV-NS, H, W, 3)
-        if has_output:
-            obj_out_dir = os.path.join(output_dir, obj_name)
-            os.makedirs(obj_out_dir, exist_ok=True)
-            for i in range(n_gen_views):
-                out_file = os.path.join(
-                    obj_out_dir, "{:06}.png".format(novel_view_idxs[i].item())
-                )
-                imageio.imwrite(out_file, (all_rgb[i] * 255).astype(np.uint8))
-
-                if args.write_depth:
-                    out_depth_file = os.path.join(
-                        obj_out_dir, "{:06}_depth.exr".format(novel_view_idxs[i].item())
-                    )
-                    out_depth_norm_file = os.path.join(
-                        obj_out_dir,
-                        "{:06}_depth_norm.png".format(novel_view_idxs[i].item()),
-                    )
-                    depth_cmap_norm = util.cmap(all_depth[i])
-                    cv2.imwrite(out_depth_file, all_depth[i])
-                    imageio.imwrite(out_depth_norm_file, depth_cmap_norm)
-
-        curr_ssim = 0.0
-        curr_psnr = 0.0
-        curr_lpips = 0.0
-        if not args.no_compare_gt:
-            images_0to1 = images * 0.5 + 0.5  # (NV, 3, H, W)
-            images_gt = images_0to1[target_view_mask]
-            rgb_gt_all = (
-                images_gt.permute(0, 2, 3, 1).contiguous().numpy()
-            )  # (NV-NS, H, W, 3)
-            for view_idx in range(n_gen_views):
-                # ssim = skimage.measure.compare_ssim(
-                #     all_rgb[view_idx],
-                #     rgb_gt_all[view_idx],
-                #     multichannel=True,
-                #     data_range=1,
-                # )
-                # psnr = skimage.measure.compare_psnr(
-                #     all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
-                # )
-                # breakpoint()
-                ssim = compare_ssim(
-                    all_rgb[view_idx],
-                    rgb_gt_all[view_idx],
-                    multichannel=True,
-                    data_range=1,
-                )
-                psnr = compare_psnr(
-                    all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
-                )
-                curr_ssim += ssim
-                curr_psnr += psnr
-
-                # breakpoint()
-
-                preds = torch.from_numpy(all_rgb[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
-                preds = preds[None, ...]
-                gts = torch.from_numpy(rgb_gt_all[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
-                gts = gts[None, ...]
-                lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda))
-                lpips = lpips.mean().item()
-                curr_lpips += lpips
-
-
-
-                if args.write_compare:
-                    out_file = os.path.join(
-                        obj_out_dir,
-                        "{:06}_compare.png".format(novel_view_idxs[view_idx].item()),
-                    )
-                    out_im = np.hstack((all_rgb[view_idx], rgb_gt_all[view_idx]))
-                    imageio.imwrite(out_file, (out_im * 255).astype(np.uint8))
-        curr_psnr /= n_gen_views
-        curr_ssim /= n_gen_views
-        curr_lpips /= n_gen_views
-        curr_cnt = 1
-        total_psnr += curr_psnr
-        total_ssim += curr_ssim
-        total_lpips += curr_lpips
-        cnt += curr_cnt
-        if not args.no_compare_gt:
-            print(
-                "curr psnr",
-                curr_psnr,
-                "ssim",
-                curr_ssim,
-                'lpips',
-                curr_lpips,
-                "running psnr",
-                total_psnr / cnt,
-                "running ssim",
-                total_ssim / cnt,
-                "running lpips",
-                total_lpips / cnt
-            )
-        finish_file.write(
-            "{} {} {} {}\n".format(obj_name, curr_psnr, curr_ssim, curr_lpips, curr_cnt)
-        )
-print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt)
+        #
+        # all_rgb, all_depth = [], []
+        # for rays in tqdm.tqdm(rays_spl):
+        #     # breakpoint()
+        #     rgb, depth = render_par(rays[None])
+        #     rgb = rgb[0].cpu()
+        #     depth = depth[0].cpu()
+        #     all_rgb.append(rgb)
+        #     all_depth.append(depth)
+        #
+        # all_rgb = torch.cat(all_rgb, dim=0)
+        # all_depth = torch.cat(all_depth, dim=0)
+        # all_depth = (all_depth - z_near) / (z_far - z_near)
+        # all_depth = all_depth.reshape(n_gen_views, H, W).numpy()
+        #
+        # all_rgb = torch.clamp(
+        #     all_rgb.reshape(n_gen_views, H, W, 3), 0.0, 1.0
+        # ).numpy()  # (NV-NS, H, W, 3)
+        # if has_output:
+        #     obj_out_dir = os.path.join(output_dir, obj_name)
+        #     os.makedirs(obj_out_dir, exist_ok=True)
+        #     for i in range(n_gen_views):
+        #         out_file = os.path.join(
+        #             obj_out_dir, "{:06}.png".format(novel_view_idxs[i].item())
+        #         )
+        #         imageio.imwrite(out_file, (all_rgb[i] * 255).astype(np.uint8))
+        #
+        #         if args.write_depth:
+        #             out_depth_file = os.path.join(
+        #                 obj_out_dir, "{:06}_depth.exr".format(novel_view_idxs[i].item())
+        #             )
+        #             out_depth_norm_file = os.path.join(
+        #                 obj_out_dir,
+        #                 "{:06}_depth_norm.png".format(novel_view_idxs[i].item()),
+        #             )
+        #             depth_cmap_norm = util.cmap(all_depth[i])
+        #             cv2.imwrite(out_depth_file, all_depth[i])
+        #             imageio.imwrite(out_depth_norm_file, depth_cmap_norm)
+#
+#         curr_ssim = 0.0
+#         curr_psnr = 0.0
+#         curr_lpips = 0.0
+#         if not args.no_compare_gt:
+#             images_0to1 = images * 0.5 + 0.5  # (NV, 3, H, W)
+#             images_gt = images_0to1[target_view_mask]
+#             rgb_gt_all = (
+#                 images_gt.permute(0, 2, 3, 1).contiguous().numpy()
+#             )  # (NV-NS, H, W, 3)
+#             for view_idx in range(n_gen_views):
+#                 # ssim = skimage.measure.compare_ssim(
+#                 #     all_rgb[view_idx],
+#                 #     rgb_gt_all[view_idx],
+#                 #     multichannel=True,
+#                 #     data_range=1,
+#                 # )
+#                 # psnr = skimage.measure.compare_psnr(
+#                 #     all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
+#                 # )
+#                 # breakpoint()
+#                 ssim = compare_ssim(
+#                     all_rgb[view_idx],
+#                     rgb_gt_all[view_idx],
+#                     multichannel=True,
+#                     data_range=1,
+#                 )
+#                 psnr = compare_psnr(
+#                     all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
+#                 )
+#                 curr_ssim += ssim
+#                 curr_psnr += psnr
+#
+#                 # breakpoint()
+#
+#                 preds = torch.from_numpy(all_rgb[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
+#                 preds = preds[None, ...]
+#                 gts = torch.from_numpy(rgb_gt_all[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
+#                 gts = gts[None, ...]
+#                 lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda))
+#                 lpips = lpips.mean().item()
+#                 curr_lpips += lpips
+#
+#
+#
+#                 if args.write_compare:
+#                     out_file = os.path.join(
+#                         obj_out_dir,
+#                         "{:06}_compare.png".format(novel_view_idxs[view_idx].item()),
+#                     )
+#                     out_im = np.hstack((all_rgb[view_idx], rgb_gt_all[view_idx]))
+#                     imageio.imwrite(out_file, (out_im * 255).astype(np.uint8))
+#         curr_psnr /= n_gen_views
+#         curr_ssim /= n_gen_views
+#         curr_lpips /= n_gen_views
+#         curr_cnt = 1
+#         total_psnr += curr_psnr
+#         total_ssim += curr_ssim
+#         total_lpips += curr_lpips
+#         cnt += curr_cnt
+#         if not args.no_compare_gt:
+#             print(
+#                 "curr psnr",
+#                 curr_psnr,
+#                 "ssim",
+#                 curr_ssim,
+#                 'lpips',
+#                 curr_lpips,
+#                 "running psnr",
+#                 total_psnr / cnt,
+#                 "running ssim",
+#                 total_ssim / cnt,
+#                 "running lpips",
+#                 total_lpips / cnt
+#             )
+#         finish_file.write(
+#             "{} {} {} {}\n".format(obj_name, curr_psnr, curr_ssim, curr_lpips, curr_cnt)
+#         )
+# print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt)
