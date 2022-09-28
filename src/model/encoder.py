@@ -168,6 +168,19 @@ class SpatialEncoder(nn.Module):
         self.latent_scaling = self.latent_scaling / (self.latent_scaling - 1) * 2.0
         return self.latent
 
+    def dummy_forward(self, x):
+        """
+        For extracting ResNet's features.
+        :param x image (B, C, H, W)
+        :return latent (B, latent_size, H, W)
+        """
+        # breakpoint()
+        self.latent = x
+        self.latent_scaling[0] = self.latent.shape[-1]
+        self.latent_scaling[1] = self.latent.shape[-2]
+        self.latent_scaling = self.latent_scaling / (self.latent_scaling - 1) * 2.0
+        return self.latent
+
     @classmethod
     def from_conf(cls, conf):
         return cls(

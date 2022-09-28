@@ -160,6 +160,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
         all_images = data["images"].to(device=device)  # (SB, NV, 3, H, W)
         SB, NV, _, H, W = all_images.shape
         all_poses = data["poses"].to(device=device)  # (SB, NV, 4, 4)
+        breakpoint()
         all_bboxes = data.get("bbox")  # (SB, NV, 4)  cmin rmin cmax rmax
         all_focals = data["focal"]  # (SB)
         all_c = data.get("c")  # (SB)

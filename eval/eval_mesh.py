@@ -119,6 +119,9 @@ def extra_args(parser):
     parser.add_argument('--z_limit', type=float, default=4.5)
     parser.add_argument('--isosurface', type=int, default=30)
     parser.add_argument('--coarse_mesh', action='store_true')
+    parser.add_argument('--masked_mesh', action='store_true')
+    parser.add_argument('--unmasked_mesh', action='store_true')
+    parser.add_argument('--radius', type=float, default=2.0)
 
     return parser
 
@@ -148,6 +151,9 @@ has_output = len(output_dir) > 0
 total_psnr = 0.0
 total_ssim = 0.0
 cnt = 0
+
+print('z_limit', args.z_limit)
+print('isosurface', args.isosurface)
 
 # wanhee
 cuda = "cuda:" + str(args.gpu_id[0])
@@ -331,102 +337,131 @@ with torch.no_grad():
                               [-1, 0, 0],
                               [0, 0, 1]])[None, ...]
 
-        # # breakpoint()
-        # if False:
-        #     assert data['masks'].shape[0] == 1
-        #     masks = data['masks'][0, 0:1] #.view(SB, int(SBNV/SB), 1, H, W)
-        #     src_pose = src_poses.view(1, 4, 4)
-        #
-        #     vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
-        #                             c1=[-2.5, -2.5, -5],
-        #                             c2=[2.5, 2.5, -0],
-        #                             reso=[128, 128, 128],
-        #                             isosurface=10.0,
-        #                             sigma_idx=3,
-        #                             eval_batch_size=128*128,
-        #                             coarse=True,
-        #                             device=None, masks=masks, src_pose=src_pose)
-        #
-        #     vertices_c1 = np.matmul(transform, vertices_c1[..., None])[..., 0]
-        #
-        #     util.recon.save_obj(vertices=vertices_c1, triangles=triangles, path='mesh_masked.obj', vert_rgb=None)
+        # breakpoint()
+        if args.masked_mesh:
+            isosurface = args.isosurface
+            c1_3 = -args.z_limit
+            c2_3 = c1_3 + 5
+            coarse_mesh = args.coarse_mesh
+            radius = args.radius
+            assert coarse_mesh == False
+
+            assert data['masks'].shape[0] == 1
+            masks = data['masks'][0, 0:1] #.view(SB, int(SBNV/SB), 1, H, W)
+            src_pose = src_poses.view(1, 4, 4)
+
+            # breakpoint()
+            conf["model"]['encoder']['index_interp'] = 'nearest'
+            conf["model"]['encoder']['index_padding'] = 'zeros'
+            dummy_net = make_model(conf["model"]).to(device=device)
+            dummy_net.stop_encoder_grad = True
+            dummy_net.encoder.eval()
+            dummy_net.dummy_encode(masks.to(device=device),
+                                   src_poses,
+                                   focal,
+                                   c=c,
+                                   )
+
+            vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+                                    c1=[-2.5, -2.5, c1_3],
+                                    c2=[2.5, 2.5, c1_3+5],
+                                    reso=[256, 256, 256],
+                                    isosurface=isosurface,
+                                    sigma_idx=3,
+                                    eval_batch_size=128*128*128,
+                                    coarse=coarse_mesh,
+                                    device=None, masks=masks, src_pose=src_pose, dummy_net=dummy_net, radius=radius)
+
+            vertices_c1_ = np.matmul(transform, vertices_c1[..., None])[..., 0]
+
+            if 'val' in args.datadir:
+                mode = 'val'
+            elif 'test' in args.datadir:
+                mode = 'test'
+            else:
+                raise NotImplementedError
+
+            util.recon.save_obj(vertices=vertices_c1_, \
+                                triangles=triangles, \
+                                path=f'fg_mesh_{mode}_masked/fg_mesh_{obj_idx:06d}_{-c1_3:.1f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                vert_rgb=None)
+
+        if args.unmasked_mesh:
+            masks = None
+            src_pose = None
+
+            isosurface = args.isosurface
+            c1_3 = -args.z_limit
+            c2_3 = c1_3 + 5
+            coarse_mesh = args.coarse_mesh
+            radius = args.radius
+            assert coarse_mesh == False
+            vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+                                                               c1=[-2.5, -2.5, c1_3],
+                                                               c2=[2.5, 2.5, c2_3],
+                                                               reso=[256, 256, 256],
+                                                               isosurface=isosurface,
+                                                               sigma_idx=3,
+                                                               eval_batch_size=128 * 128 * 128,#128 * 128 * 64,
+                                                               coarse=coarse_mesh,
+                                                               device=None, masks=masks, src_pose=src_pose, obj_idx=obj_idx, radius=radius)
+
+            # breakpoint()
+
+            vertices_c1_ = np.matmul(transform, vertices_c1[..., None])[..., 0]
+
+            if 'val' in args.datadir:
+                mode = 'val'
+            elif 'test' in args.datadir:
+                mode = 'test'
+            else:
+                raise NotImplementedError
+
+            util.recon.save_obj(vertices=vertices_c1_, \
+                                triangles=triangles, \
+                                path=f'fg_mesh_{mode}_unmasked/fg_mesh_{obj_idx:06d}_{-c1_3:.1f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                vert_rgb=None)
 
         # breakpoint()
 
-        masks = None
-        src_pose = None
-
-        isosurface = args.isosurface
-        c1_3 = -args.z_limit
-        c2_3 = c1_3 + 3
-        coarse_mesh = args.coarse_mesh
-        assert coarse_mesh == False
-        vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
-                                                           c1=[-1.5, -1.5, c1_3],
-                                                           c2=[1.5, 1.5, c2_3],
-                                                           reso=[256, 256, 256],
-                                                           isosurface=isosurface,
-                                                           sigma_idx=3,
-                                                           eval_batch_size=128 * 128 * 32,#128 * 128 * 64,
-                                                           coarse=coarse_mesh,
-                                                           device=None, masks=masks, src_pose=src_pose, obj_idx=obj_idx)
-
-        # breakpoint()
-
-        vertices_c1_ = np.matmul(transform, vertices_c1[..., None])[..., 0]
-
-        if 'val' in args.datadir:
-            mode = 'val'
-        elif 'test' in args.datadir:
-            mode = 'test'
-        else:
-            raise NotImplementedError
-
-        util.recon.save_obj(vertices=vertices_c1_, \
-                            triangles=triangles, \
-                            path=f'fg_mesh_{mode}/fg_mesh_{obj_idx:06d}_{-c1_3:.1f}_{isosurface:02d}.obj', \
-                            vert_rgb=None)
-
-        # breakpoint()
-
-        #
-        # all_rgb, all_depth = [], []
-        # for rays in tqdm.tqdm(rays_spl):
-        #     # breakpoint()
-        #     rgb, depth = render_par(rays[None])
-        #     rgb = rgb[0].cpu()
-        #     depth = depth[0].cpu()
-        #     all_rgb.append(rgb)
-        #     all_depth.append(depth)
-        #
-        # all_rgb = torch.cat(all_rgb, dim=0)
-        # all_depth = torch.cat(all_depth, dim=0)
-        # all_depth = (all_depth - z_near) / (z_far - z_near)
-        # all_depth = all_depth.reshape(n_gen_views, H, W).numpy()
-        #
-        # all_rgb = torch.clamp(
-        #     all_rgb.reshape(n_gen_views, H, W, 3), 0.0, 1.0
-        # ).numpy()  # (NV-NS, H, W, 3)
-        # if has_output:
-        #     obj_out_dir = os.path.join(output_dir, obj_name)
-        #     os.makedirs(obj_out_dir, exist_ok=True)
-        #     for i in range(n_gen_views):
-        #         out_file = os.path.join(
-        #             obj_out_dir, "{:06}.png".format(novel_view_idxs[i].item())
-        #         )
-        #         imageio.imwrite(out_file, (all_rgb[i] * 255).astype(np.uint8))
-        #
-        #         if args.write_depth:
-        #             out_depth_file = os.path.join(
-        #                 obj_out_dir, "{:06}_depth.exr".format(novel_view_idxs[i].item())
-        #             )
-        #             out_depth_norm_file = os.path.join(
-        #                 obj_out_dir,
-        #                 "{:06}_depth_norm.png".format(novel_view_idxs[i].item()),
-        #             )
-        #             depth_cmap_norm = util.cmap(all_depth[i])
-        #             cv2.imwrite(out_depth_file, all_depth[i])
-        #             imageio.imwrite(out_depth_norm_file, depth_cmap_norm)
+#
+#         all_rgb, all_depth = [], []
+#         for rays in tqdm.tqdm(rays_spl):
+#             # breakpoint()
+#             rgb, depth = render_par(rays[None])
+#             rgb = rgb[0].cpu()
+#             depth = depth[0].cpu()
+#             all_rgb.append(rgb)
+#             all_depth.append(depth)
+#
+#         all_rgb = torch.cat(all_rgb, dim=0)
+#         all_depth = torch.cat(all_depth, dim=0)
+#         all_depth = (all_depth - z_near) / (z_far - z_near)
+#         all_depth = all_depth.reshape(n_gen_views, H, W).numpy()
+#
+#         all_rgb = torch.clamp(
+#             all_rgb.reshape(n_gen_views, H, W, 3), 0.0, 1.0
+#         ).numpy()  # (NV-NS, H, W, 3)
+#         if has_output:
+#             obj_out_dir = os.path.join(output_dir, obj_name)
+#             os.makedirs(obj_out_dir, exist_ok=True)
+#             for i in range(n_gen_views):
+#                 out_file = os.path.join(
+#                     obj_out_dir, "{:06}.png".format(novel_view_idxs[i].item())
+#                 )
+#                 imageio.imwrite(out_file, (all_rgb[i] * 255).astype(np.uint8))
+#
+#                 if args.write_depth:
+#                     out_depth_file = os.path.join(
+#                         obj_out_dir, "{:06}_depth.exr".format(novel_view_idxs[i].item())
+#                     )
+#                     out_depth_norm_file = os.path.join(
+#                         obj_out_dir,
+#                         "{:06}_depth_norm.png".format(novel_view_idxs[i].item()),
+#                     )
+#                     depth_cmap_norm = util.cmap(all_depth[i])
+#                     cv2.imwrite(out_depth_file, all_depth[i])
+#                     imageio.imwrite(out_depth_norm_file, depth_cmap_norm)
 #
 #         curr_ssim = 0.0
 #         curr_psnr = 0.0

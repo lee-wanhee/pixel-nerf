@@ -8,6 +8,7 @@ import util
 import tqdm
 import warnings
 import torch.nn.functional as F
+import skimage.measure as measure
 
 from util import repeat_interleave
 
@@ -22,7 +23,7 @@ def marching_cubes(
     sigma_idx=3,
     eval_batch_size=100000,
     coarse=True,
-    device=None, masks=None, src_pose=None, obj_idx=0,
+    device=None, masks=None, src_pose=None, obj_idx=0, dummy_net=None, radius=2.0,
 ):
     """
     Run marching cubes on network. Uses PyMCubes.
@@ -83,7 +84,7 @@ def marching_cubes(
         # x_index = torch.logical_and(grid[..., 0] < 2.5, grid[..., 0] > -0.5)
         # y_index = torch.logical_and(grid[..., 1] < 2.5, grid[..., 1] > -0.5)
         dist_xy = torch.sqrt(grid[..., 0]**2 + grid[..., 1]**2)
-        pick_some_xy_index = torch.logical_and(dist_xy > -1.5, dist_xy < 1.5)
+        pick_some_xy_index = torch.logical_and(dist_xy > -radius, dist_xy < radius)
         # sigmas.view(128, 128, 128)[:, :, :] = 0.0
         sigmas *= pick_some_xy_index.view(*reso)
         sigmas = sigmas.cpu().numpy()
@@ -118,54 +119,54 @@ def marching_cubes(
             # breakpoint()
 
             # breakpoint()
-            xyz = torch.matmul(src_pose.inverse(), grid_n_one)[None, ...][..., 0]
-            print(src_pose.inverse())
-
-            focal = torch.tensor([[122.9440, -122.9440]], device='cuda:0')
-            # focal = torch.tensor([[122.9440, -45.]], device='cuda:0')
-            focal = torch.tensor([[122.9440, -64.]], device='cuda:0')
-            # focal = torch.tensor([[64., -64]], device='cuda:0')
-            c = torch.tensor([[64., 64.]], device='cuda:0')
-
-
-            # (Pdb)
-            # self.latent_scaling / image_size
-            # tensor([0.0159, 0.0159], device='cuda:0')
-            # (Pdb)
-            # image_size
-            # tensor([128., 128.], device='cuda:0')
-            # (Pdb)
-            # self.latent_scaling
-            # tensor([2.0317, 2.0317], device='cuda:0')
-
-            uv = -xyz[:, :, :2] / (xyz[:, :, 2:] + 1e-5)  # (SB, B, 2)
-            # breakpoint()
-            uv *= repeat_interleave(
-                focal.unsqueeze(1), 1
-            )
-            uv += repeat_interleave(
-                c.unsqueeze(1), 1
-            )  # (SB*NS, B, 2)
-            # latent = self.encoder.index(
-            #     uv, None, self.image_shape
-            # )  # (SB * NS, latent, B)
-            uv = uv / 128 * 2 - 1
-            # uv = uv * 0.0159
-
-            # uv[..., 0] *= -2
-            uv[..., 1] *= -1
-
-
-            # masks ~ torch.Size([1, 512, 64, 64])
-            uv = uv.unsqueeze(2)  # (B, N, 1, 2)
-            # uv = uv.flip(dims=(3,))
-            samples = F.grid_sample(
-                masks,
-                uv,
-                align_corners=False,
-                mode='bilinear',
-                padding_mode='zeros',
-            )
+            # xyz = torch.matmul(src_pose.inverse(), grid_n_one)[None, ...][..., 0]
+            # print(src_pose.inverse())
+            #
+            # focal = torch.tensor([[122.9440, -122.9440]], device='cuda:0')
+            # # focal = torch.tensor([[122.9440, -45.]], device='cuda:0')
+            # focal = torch.tensor([[122.9440, -64.]], device='cuda:0')
+            # # focal = torch.tensor([[64., -64]], device='cuda:0')
+            # c = torch.tensor([[64., 64.]], device='cuda:0')
+            #
+            #
+            # # (Pdb)
+            # # self.latent_scaling / image_size
+            # # tensor([0.0159, 0.0159], device='cuda:0')
+            # # (Pdb)
+            # # image_size
+            # # tensor([128., 128.], device='cuda:0')
+            # # (Pdb)
+            # # self.latent_scaling
+            # # tensor([2.0317, 2.0317], device='cuda:0')
+            #
+            # uv = -xyz[:, :, :2] / (xyz[:, :, 2:] + 1e-5)  # (SB, B, 2)
+            # # breakpoint()
+            # uv *= repeat_interleave(
+            #     focal.unsqueeze(1), 1
+            # )
+            # uv += repeat_interleave(
+            #     c.unsqueeze(1), 1
+            # )  # (SB*NS, B, 2)
+            # # latent = self.encoder.index(
+            # #     uv, None, self.image_shape
+            # # )  # (SB * NS, latent, B)
+            # uv = uv / 128 * 2 - 1
+            # # uv = uv * 0.0159
+            #
+            # # uv[..., 0] *= -2
+            # uv[..., 1] *= -1
+            #
+            #
+            # # masks ~ torch.Size([1, 512, 64, 64])
+            # uv = uv.unsqueeze(2)  # (B, N, 1, 2)
+            # # uv = uv.flip(dims=(3,))
+            # samples = F.grid_sample(
+            #     masks,
+            #     uv,
+            #     align_corners=False,
+            #     mode='bilinear',
+            #     padding_mode='zeros',
+            # )
 
             # focal_x = 0.9605 * 128
             # focal_y = 0.9605 * 128
@@ -201,14 +202,41 @@ def marching_cubes(
             # cam_coord = cam_coord_.clone()
             # inside_mask = F.grid_sample(masks.to(device), uv[None, ...].to(device), mode='nearest', padding_mode='zeros', align_corners=None)
 
-            inside_mask = samples[:, :, :, 0].permute(0, 2, 1)  # (B, C, N)
+            all_latents = []
+            for pnts, vd in tqdm.tqdm(zip(grid_spl, vd_spl), total=len(grid_spl)):
+                # print('pnts.shape', pnts.shape)
+                # breakpoint()
+                outputs = dummy_net.dummy_forward(
+                    pnts[None, ...].to(device=device), coarse=coarse, viewdirs=vd[None, ...].to(device=device)
+                )
+                latent = outputs
+                # if temp_idx < 5:
+                #     sigmas *= 0.
+                all_latents.append(latent.cpu())
+            latent = torch.cat(all_latents, dim=0)
 
-            inside_mask = inside_mask.view([128, 128, 128])# TODO: check this permutation
-            # sigmas *= inside_mask.cpu().numpy()
-            sigmas += inside_mask.cpu().numpy() * 100
+            # for pnts, dirs in zip(split_points, split_viewdirs):
+            #     # breakpoint()
+            #     val_all.append(model(pnts, coarse=coarse, viewdirs=dirs))
+            # :param model should return (B, (r, g, b, sigma)) when called with (B, (x, y, z))
+            # should also support 'coarse' boolean argument
+            inside_mask = latent
+            # inside_mask = samples[:, :, :, 0].permute(0, 2, 1)  # (B, C, N)
+            inside_mask = inside_mask.view(*reso)# TODO: check this permutation
+            # inside_mask = inside_mask.view([128, 128, 128])
+            sigmas *= inside_mask.cpu().numpy()
+
+            # breakpoint()
+            # locality_ratio = 7
+            # outsider_idx = torch.any(torch.sqrt(
+            #     torch.sum((grid.view([*reso, 3]) - torch.Tensor([0., 0., -5.0])) ** 2, dim=-1, keepdims=True)) > locality_ratio, dim=-1)
+            # sigmas[outsider_idx] *= 0
+            # sigmas += inside_mask.cpu().numpy() * 100
 
         print("Running marching cubes")
+        # breakpoint()
         vertices, triangles = mcubes.marching_cubes(sigmas, isosurface)
+        # vertices, triangles, _, _ = measure.marching_cubes_lewiner(sigmas, isosurface)
         # Scale
         c1, c2 = np.array(c1), np.array(c2)
         vertices *= (c2 - c1) / np.array(reso)

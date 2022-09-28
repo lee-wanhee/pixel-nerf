@@ -176,7 +176,6 @@ class MultiscenesDataset(BaseDataset):
 
             pose = self._coord_trans_world @ torch.tensor(pose, dtype=torch.float32) @ self._coord_trans_cam
 
-
             if self.opt.fixed_locality:
                 azi_rot = np.eye(3)  # not used; placeholder
             else:
@@ -344,6 +343,7 @@ class MultiscenesDataset(BaseDataset):
 
             else:
                 ret['use_fg_mask'] = False
+                masks = (~ret['bg_mask'] * 1.)
 
 
         self.buffer_rets = rets
@@ -421,7 +421,7 @@ def collate_fn(batch):
         bboxes = ret['bboxes'].view(SB, int(SBNV / SB), 4)
     else:
         images = ret['img_data'].view(SB, int(SBNV / SB), 3, H, W)
-        masks = None
+        masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV / SB), 1, H, W)
         bboxes = None
 
     data = {
