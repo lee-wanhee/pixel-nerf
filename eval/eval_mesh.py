@@ -383,7 +383,7 @@ with torch.no_grad():
 
             util.recon.save_obj(vertices=vertices_c1_, \
                                 triangles=triangles, \
-                                path=f'fg_mesh_{mode}_masked/fg_mesh_{obj_idx:06d}_{-c1_3:.1f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                path=f'fg_mesh_{mode}_masked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:02d}_{radius:.1f}.obj', \
                                 vert_rgb=None)
 
         if args.unmasked_mesh:
@@ -419,7 +419,7 @@ with torch.no_grad():
 
             util.recon.save_obj(vertices=vertices_c1_, \
                                 triangles=triangles, \
-                                path=f'fg_mesh_{mode}_unmasked/fg_mesh_{obj_idx:06d}_{-c1_3:.1f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                path=f'fg_mesh_{mode}_unmasked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:02d}_{radius:.1f}.obj', \
                                 vert_rgb=None)
 
         # breakpoint()
