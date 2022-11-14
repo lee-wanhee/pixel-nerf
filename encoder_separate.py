@@ -5,9 +5,144 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import torchvision
-import util
-from model.custom_encoder import ConvEncoder
 import torch.autograd.profiler as profiler
+import functools
+
+
+def get_norm_layer(norm_type="instance", group_norm_groups=32):
+    """Return a normalization layer
+    Parameters:
+        norm_type (str) -- the name of the normalization layer: batch | instance | none
+    For BatchNorm, we use learnable affine parameters and track running statistics (mean/stddev).
+    For InstanceNorm, we do not use learnable affine parameters. We do not track running statistics.
+    """
+    if norm_type == "batch":
+        norm_layer = functools.partial(
+            nn.BatchNorm2d, affine=True, track_running_stats=True
+        )
+    elif norm_type == "instance":
+        norm_layer = functools.partial(
+            nn.InstanceNorm2d, affine=False, track_running_stats=False
+        )
+    elif norm_type == "group":
+        norm_layer = functools.partial(nn.GroupNorm, group_norm_groups)
+    elif norm_type == "none":
+        norm_layer = None
+    else:
+        raise NotImplementedError("normalization layer [%s] is not found" % norm_type)
+    return norm_layer
+
+def same_pad_conv2d(t, padding_type="reflect", kernel_size=3, stride=1, layer=None):
+    """
+    Perform SAME padding on tensor, given kernel size/stride of conv operator
+    assumes kernel/stride are equal in all dimensions.
+    Use before conv called.
+    Dilation not supported.
+    :param t image tensor input (B, C, H, W)
+    :param padding_type padding type constant | reflect | replicate | circular
+    constant is 0-pad.
+    :param kernel_size kernel size of conv
+    :param stride stride of conv
+    :param layer optionally, pass conv layer to automatically get kernel_size and stride
+    (overrides these)
+    """
+    if layer is not None:
+        if isinstance(layer, nn.Sequential):
+            layer = next(layer.children())
+        kernel_size = layer.kernel_size[0]
+        stride = layer.stride[0]
+    return F.pad(
+        t, calc_same_pad_conv2d(t.shape, kernel_size, stride), mode=padding_type
+    )
+
+class ConvEncoder(nn.Module):
+    """
+    Basic, extremely simple convolutional encoder
+    """
+
+    def __init__(
+        self,
+        dim_in=3,
+        norm_layer=get_norm_layer("group"),
+        padding_type="reflect",
+        use_leaky_relu=True,
+        use_skip_conn=True,
+    ):
+        super().__init__()
+        self.dim_in = dim_in
+        self.norm_layer = norm_layer
+        self.activation = nn.LeakyReLU() if use_leaky_relu else nn.ReLU()
+        self.padding_type = padding_type
+        self.use_skip_conn = use_skip_conn
+
+        # TODO: make these configurable
+        first_layer_chnls = 64
+        mid_layer_chnls = 128
+        last_layer_chnls = 128
+        n_down_layers = 3
+        self.n_down_layers = n_down_layers
+
+        self.conv_in = nn.Sequential(
+            nn.Conv2d(dim_in, first_layer_chnls, kernel_size=7, stride=2, bias=False),
+            norm_layer(first_layer_chnls),
+            self.activation,
+        )
+
+        chnls = first_layer_chnls
+        for i in range(0, n_down_layers):
+            conv = nn.Sequential(
+                nn.Conv2d(chnls, 2 * chnls, kernel_size=3, stride=2, bias=False),
+                norm_layer(2 * chnls),
+                self.activation,
+            )
+            setattr(self, "conv" + str(i), conv)
+
+            deconv = nn.Sequential(
+                nn.ConvTranspose2d(
+                    4 * chnls, chnls, kernel_size=3, stride=2, bias=False
+                ),
+                norm_layer(chnls),
+                self.activation,
+            )
+            setattr(self, "deconv" + str(i), deconv)
+            chnls *= 2
+
+        self.conv_mid = nn.Sequential(
+            nn.Conv2d(chnls, mid_layer_chnls, kernel_size=4, stride=4, bias=False),
+            norm_layer(mid_layer_chnls),
+            self.activation,
+        )
+
+        self.deconv_last = nn.ConvTranspose2d(
+            first_layer_chnls, last_layer_chnls, kernel_size=3, stride=2, bias=True
+        )
+
+        self.dims = [last_layer_chnls]
+
+    def forward(self, x):
+        x = util.same_pad_conv2d(x, padding_type=self.padding_type, layer=self.conv_in)
+        x = self.conv_in(x)
+
+        inters = []
+        for i in range(0, self.n_down_layers):
+            conv_i = getattr(self, "conv" + str(i))
+            x = util.same_pad_conv2d(x, padding_type=self.padding_type, layer=conv_i)
+            x = conv_i(x)
+            inters.append(x)
+
+        x = util.same_pad_conv2d(x, padding_type=self.padding_type, layer=self.conv_mid)
+        x = self.conv_mid(x)
+        x = x.reshape(x.shape[0], -1, 1, 1).expand(-1, -1, *inters[-1].shape[-2:])
+
+        for i in reversed(range(0, self.n_down_layers)):
+            if self.use_skip_conn:
+                x = torch.cat((x, inters[i]), dim=1)
+            deconv_i = getattr(self, "deconv" + str(i))
+            x = deconv_i(x)
+            x = util.same_unpad_deconv2d(x, layer=deconv_i)
+        x = self.deconv_last(x)
+        x = util.same_unpad_deconv2d(x, layer=self.deconv_last)
+        return x
 
 
 class SpatialEncoder(nn.Module):
@@ -44,23 +179,23 @@ class SpatialEncoder(nn.Module):
         """
         super().__init__()
 
-        print('backbone', backbone) # resnet34
-        print('pretrained', pretrained) # True
-        print('num_layers', num_layers) # 4
-        print('index_interp', index_interp) # bilinear
-        print('index_padding', index_padding) # border
-        print('upsample_interp', upsample_interp) # bilinear
-        print('feature_scale', feature_scale) # 1.0
-        print('use_first_pool', use_first_pool) # True, False only for sn64
-        print('norm_type', norm_type) # batch
+        # print('backbone', backbone) resnet34
+        # print('pretrained', pretrained) True
+        # print('num_layers', num_layers) 4
+        # print('index_interp', index_interp) bilinear
+        # print('index_padding', index_padding) border
+        # print('upsample_interp', upsample_interp) bilinear
+        # print('feature_scale', feature_scale) 1.0
+        # print('use_first_pool', use_first_pool) False
+        # print('norm_type', norm_type) batch
 
         if norm_type != "batch":
             assert not pretrained
 
-        self.use_custom_resnet = backbone == "custom"
-        self.feature_scale = feature_scale
-        self.use_first_pool = use_first_pool
-        norm_layer = util.get_norm_layer(norm_type)
+        self.use_custom_resnet = backbone == "custom" # False
+        self.feature_scale = feature_scale # 1.0
+        self.use_first_pool = use_first_pool # False
+        norm_layer = get_norm_layer(norm_type)
 
         if self.use_custom_resnet:
             print("WARNING: Custom encoder is experimental only")
@@ -267,3 +402,20 @@ class ImageEncoder(nn.Module):
             pretrained=conf.get_bool("pretrained", True),
             latent_size=conf.get_int("latent_size", 128),
         )
+
+if __name__ == '__main__':
+
+    mode = 'dtu' # "sn64" (shapenet multi categories) / # "srn" (shapenet car) / "dtu" / "real_car"
+    # explanation: https://github.com/sxyu/pixel-nerf
+    print('mode:', mode)
+
+    if 'sn64' in mode:
+        encoder = SpatialEncoder(use_first_pool=False)
+    else:
+        encoder = SpatialEncoder()
+
+    encoder.load_state_dict(torch.load(f'{mode}_encoder.pt'))
+
+    print('Model is successfully loaded')
+
+
