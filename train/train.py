@@ -165,6 +165,10 @@ class PixelNeRFTrainer(trainlib.Trainer):
         all_focals = data["focal"]  # (SB)
         all_c = data.get("c")  # (SB)
 
+        # torch.save(all_images, '/data2/wanhee/pixel-nerf/all_images_msn_direction_inverse.pt')
+        # torch.save(all_poses, '/data2/wanhee/pixel-nerf/all_poses_msn_direction_inverse.pt')
+        # raise ValueError()
+
         # print('all_images.shape', all_images.shape)
 
         if self.use_bbox and global_step >= args.no_bbox_step:
@@ -208,7 +212,9 @@ class PixelNeRFTrainer(trainlib.Trainer):
             rgb_gt_all = (
                 rgb_gt_all.permute(0, 2, 3, 1).contiguous().reshape(-1, 3)
             )  # (NV, H, W, 3)
-
+            torch.save(images_0to1, '/data2/wanhee/pixel-nerf/images_0to1_msn_direction_inverse.pt')
+            torch.save(cam_rays, '/data2/wanhee/pixel-nerf/cam_rays_msn_direction_inverse.pt')
+            raise ValueError()
             # print('rgb_gt_all.shape', rgb_gt_all.shape)
 
             if all_bboxes is not None:

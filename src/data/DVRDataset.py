@@ -271,6 +271,10 @@ class DVRDataset(torch.utils.data.Dataset):
             "images": all_imgs,
             "poses": all_poses,
         }
+        torch.save(all_poses, 'all_poses_dtu.pt')
+        torch.save(all_imgs, 'all_imgs_dtu.pt')
+        raise ValueError
+
         if all_masks is not None:
             result["masks"] = all_masks
         if self.sub_format != "shapenet":

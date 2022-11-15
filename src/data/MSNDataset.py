@@ -14,6 +14,7 @@ sys.path.append('/data2/wanhee/pixel-nerf/src/')
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
 
 def get_world_to_camera_matrix(camera_pos, vertical=None):
+    print(camera_pos)
     # We assume that the camera is pointed at the origin
     camera_z = -camera_pos / torch.norm(camera_pos, dim=-1, keepdim=True)
     if vertical is None:
@@ -113,10 +114,25 @@ class Clevr3dDataset(data.Dataset):
         all_poses = []
         for i in range(self.num_views):
             pose_tensor = get_world_to_camera_matrix(torch.tensor(all_camera_pos[i]))
+            # print(all_camera_pos[i])
+            # print(pose_tensor)
+            real_pose = torch.zeros([4, 4])
+            real_pose[:3, :] = pose_tensor
+            real_pose[3, 3] = 1.
+            real_pose_inverse = real_pose.inverse()
+
             pose = torch.zeros([4, 4])
-            pose[:3, :] = pose_tensor
+            pose[:3, :3] = - real_pose_inverse[:3, :3]
+            pose[:3, 3] = real_pose_inverse[:3, 3]
             pose[3, 3] = 1.
-            pose = pose.inverse()
+
+            # pose = torch.zeros([4, 4])
+            # pose[:3, :3] = pose_tensor[:3, :3]
+            # pose[:3, 3] = real_pose_inverse[:3, 3]
+            # pose[3, 3] = 1.
+
+            # print(pose)
+
             # pose_tensor = torch.tensor(pose_np)
             all_poses.append(pose) # [None, ...]
 
@@ -209,7 +225,7 @@ class Clevr3dDataset(data.Dataset):
         #     mask = np.transpose(mask, (2, 0, 1)).astype(np.float32)
         #     example['masks'] = mask
 
-        focal = torch.tensor([1.45833, 1.09375], dtype=torch.float32)
+        focal = torch.tensor([1.45833 * 128, 1.09375 * 128], dtype=torch.float32)
 
         # print(all_imgs.shape)
         # print(all_poses.shape)
