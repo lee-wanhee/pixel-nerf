@@ -12,6 +12,7 @@ import cv2
 import sys
 sys.path.append('/data2/wanhee/pixel-nerf/src/')
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
+import torchvision.transforms.functional as TF
 
 def get_world_to_camera_matrix(camera_pos, vertical=None):
     # print(camera_pos)
@@ -97,7 +98,12 @@ class Clevr3dDataset(data.Dataset):
 
         imgs = [img[..., :3].astype(np.float32) / 255 for img in imgs]
         imgs = [self.image_to_tensor(img) for img in imgs] # [None, ...]
-        all_imgs = torch.stack(imgs)
+        imgs_list = []
+        for img in imgs:
+            img = TF.center_crop(img, (240, 240))
+            img = TF.resize(img, (128, 128))
+            imgs_list.append(img)
+        all_imgs = torch.stack(imgs_list)
         # Convert 16 bit integer depths to floating point numbers.
         # 0.025 is the normalization factor used while drawing the depthmaps.
         # depths = [d.astype(np.float32) / (65536 * 0.025) for d in depths]
@@ -226,7 +232,7 @@ class Clevr3dDataset(data.Dataset):
         #     example['masks'] = mask
 
         # focal = torch.tensor([1.09375 * 128, 1.45833 * 128], dtype=torch.float32)
-        focal = torch.tensor([1.45833 * 240, 1.09375 * 320], dtype=torch.float32) # before
+        focal = torch.tensor([1.45833 * 128, 1.09375 * 128], dtype=torch.float32) # before
 
         # print(all_imgs.shape)
         # print(all_poses.shape)

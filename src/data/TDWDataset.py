@@ -164,6 +164,9 @@ class MultiscenesDataset(BaseDataset):
                 assert False
             pose = torch.tensor(pose, dtype=torch.float32)
 
+            print(pose)
+            raise ValueError()
+
             # pose = pose.inverse()
             self._coord_trans_world = torch.tensor(
                 [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]],

@@ -271,6 +271,8 @@ class DVRDataset(torch.utils.data.Dataset):
             "images": all_imgs,
             "poses": all_poses,
         }
+        print(all_poses)
+        raise ValueError()
         # torch.save(all_poses, 'all_poses_dtu.pt')
         # torch.save(all_imgs, 'all_imgs_dtu.pt')
         # print('focal', focal)

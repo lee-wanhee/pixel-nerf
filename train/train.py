@@ -130,8 +130,6 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
         self.args = args
 
-        self.num_trial = 0
-
     def post_batch(self, epoch, batch):
         renderer.sched_step(args.batch_size)
 
@@ -139,7 +137,6 @@ class PixelNeRFTrainer(trainlib.Trainer):
         torch.save(renderer.state_dict(), self.renderer_state_path)
 
     def calc_losses(self, data, is_train=True, global_step=0):
-        self.num_trial += 1
         # print('data["images"].shape', data["images"].shape)
         # breakpoint()
         if "images" not in data:
@@ -168,10 +165,6 @@ class PixelNeRFTrainer(trainlib.Trainer):
         all_focals = data["focal"]  # (SB)
         all_c = data.get("c")  # (SB)
 
-
-        torch.save(all_images, '/data2/wanhee/pixel-nerf/all_images_tdw.pt')
-        torch.save(all_poses, '/data2/wanhee/pixel-nerf/all_poses_tdw.pt')
-        # raise ValueError()
 
         # print('all_images.shape', all_images.shape)
 
@@ -216,10 +209,6 @@ class PixelNeRFTrainer(trainlib.Trainer):
             rgb_gt_all = (
                 rgb_gt_all.permute(0, 2, 3, 1).contiguous().reshape(-1, 3)
             )  # (NV, H, W, 3)
-            torch.save(images_0to1, '/data2/wanhee/pixel-nerf/images_0to1_tdw.pt')
-            torch.save(cam_rays, '/data2/wanhee/pixel-nerf/cam_rays_tdw.pt')
-
-            raise ValueError()
 
             if all_bboxes is not None:
                 pix = util.bbox_sample(bboxes, args.ray_batch_size)
