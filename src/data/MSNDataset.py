@@ -14,7 +14,7 @@ sys.path.append('/data2/wanhee/pixel-nerf/src/')
 from util import get_image_to_tensor_balanced, get_mask_to_tensor
 
 def get_world_to_camera_matrix(camera_pos, vertical=None):
-    print(camera_pos)
+    # print(camera_pos)
     # We assume that the camera is pointed at the origin
     camera_z = -camera_pos / torch.norm(camera_pos, dim=-1, keepdim=True)
     if vertical is None:
@@ -225,7 +225,8 @@ class Clevr3dDataset(data.Dataset):
         #     mask = np.transpose(mask, (2, 0, 1)).astype(np.float32)
         #     example['masks'] = mask
 
-        focal = torch.tensor([1.45833 * 128, 1.09375 * 128], dtype=torch.float32)
+        # focal = torch.tensor([1.09375 * 128, 1.45833 * 128], dtype=torch.float32)
+        focal = torch.tensor([1.45833 * 128, 1.09375 * 128], dtype=torch.float32) # before
 
         # print(all_imgs.shape)
         # print(all_poses.shape)
