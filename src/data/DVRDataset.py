@@ -273,9 +273,9 @@ class DVRDataset(torch.utils.data.Dataset):
         }
         # torch.save(all_poses, 'all_poses_dtu.pt')
         # torch.save(all_imgs, 'all_imgs_dtu.pt')
-        print('focal', focal)
-        print('all_imgs.shape', all_imgs.shape)
-        raise ValueError
+        # print('focal', focal)
+        # print('all_imgs.shape', all_imgs.shape)
+        # raise ValueError
 
         if all_masks is not None:
             result["masks"] = all_masks

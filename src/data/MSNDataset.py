@@ -226,7 +226,7 @@ class Clevr3dDataset(data.Dataset):
         #     example['masks'] = mask
 
         # focal = torch.tensor([1.09375 * 128, 1.45833 * 128], dtype=torch.float32)
-        focal = torch.tensor([1.45833 * 128, 1.09375 * 128], dtype=torch.float32) # before
+        focal = torch.tensor([1.45833 * 240, 1.09375 * 320], dtype=torch.float32) # before
 
         # print(all_imgs.shape)
         # print(all_poses.shape)

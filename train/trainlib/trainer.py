@@ -8,7 +8,6 @@ import warnings
 # added for tdw / wanhee
 from data.TDWDataset import collate_fn
 
-
 class Trainer:
     def __init__(self, net, train_dataset, test_dataset, args, conf, device=None):
         self.args = args
