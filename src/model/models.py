@@ -416,6 +416,8 @@ class PixelNeRFNet(torch.nn.Module):
                 uv += repeat_interleave(
                     self.c.unsqueeze(1), NS if self.c.shape[0] > 1 else 1
                 )  # (SB*NS, B, 2)
+                # torch.save(uv, 'pixelnerf_uv_dtu.pt')
+                # raise ValueError()
                 latent = self.encoder.index(
                     uv, None, self.image_shape
                 )  # (SB * NS, latent, B)

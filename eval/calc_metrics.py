@@ -212,6 +212,7 @@ def run_map():
 
     cuda = "cuda:" + str(args.gpu_id)
     lpips_vgg = lpips.LPIPS(net="vgg").to(device=cuda)
+    lpips_alex = lpips.LPIPS()to(device=cuda)
 
     def get_metrics(rgb, gt):
         # ssim = skimage.measure.compare_ssim(rgb, gt, multichannel=True, data_range=1)
@@ -270,6 +271,7 @@ def run_map():
         gts_spl = torch.split(gts, args.lpips_batch_size, dim=0)
         with torch.no_grad():
             for predi, gti in zip(preds_spl, gts_spl):
+                # lpips_i = lpips_vgg(predi.to(device=cuda), gti.to(device=cuda))
                 lpips_i = lpips_vgg(predi.to(device=cuda), gti.to(device=cuda))
                 lpips_all.append(lpips_i)
             lpips = torch.cat(lpips_all)

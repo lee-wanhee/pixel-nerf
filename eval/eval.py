@@ -150,7 +150,9 @@ cnt = 0
 cuda = "cuda:" + str(args.gpu_id[0])
 print(cuda)
 lpips_vgg = lpips.LPIPS(net="vgg").to(device=cuda)
+lpips_alex = lpips.LPIPS().to(device=cuda)
 total_lpips = 0.0
+total_lpips_alex = 0.0
 
 if has_output:
     finish_path = os.path.join(output_dir, "finish.txt")
@@ -163,13 +165,15 @@ if has_output:
         total_psnr = sum((float(x[1]) for x in lines))
         total_ssim = sum((float(x[2]) for x in lines))
         total_lpips = sum((float(x[3]) for x in lines))
-        cnt = sum((int(x[4]) for x in lines))
+        total_lpips_alex = sum((float(x[4]) for x in lines))
+        cnt = sum((int(x[5]) for x in lines))
         if cnt > 0:
-            print("resume psnr", total_psnr / cnt, "ssim", total_ssim / cnt, "lpips", total_lpips / cnt)
+            print("resume psnr", total_psnr / cnt, "ssim", total_ssim / cnt, "lpips", total_lpips / cnt, 'lpips_alex', total_lpips_alex / cnt)
         else:
             total_psnr = 0.0
             total_ssim = 0.0
             total_lpips = 0.0
+            total_lpips_alex = 0.0
     else:
         finished = set()
 
@@ -364,6 +368,7 @@ with torch.no_grad():
         curr_ssim = 0.0
         curr_psnr = 0.0
         curr_lpips = 0.0
+        curr_lpips_alex = 0.0
         if not args.no_compare_gt:
             images_0to1 = images * 0.5 + 0.5  # (NV, 3, H, W)
             images_gt = images_0to1[target_view_mask]
@@ -400,9 +405,19 @@ with torch.no_grad():
                 preds = preds[None, ...]
                 gts = torch.from_numpy(rgb_gt_all[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
                 gts = gts[None, ...]
-                lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda))
+                lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda)) # -1 to 1
                 lpips = lpips.mean().item()
                 curr_lpips += lpips
+
+                lpips = lpips_alex(preds.to(device=cuda), gts.to(device=cuda))
+                lpips = lpips.mean().item()
+                curr_lpips_alex += lpips
+
+                # breakpoint() # check batch dim
+                # (Pdb) preds.shape
+                # torch.Size([1, 3, 128, 128])
+                # (Pdb) gts.shape
+                # torch.Size([1, 3, 128, 128])
 
 
 
@@ -416,10 +431,12 @@ with torch.no_grad():
         curr_psnr /= n_gen_views
         curr_ssim /= n_gen_views
         curr_lpips /= n_gen_views
+        curr_lpips_alex /= n_gen_views
         curr_cnt = 1
         total_psnr += curr_psnr
         total_ssim += curr_ssim
         total_lpips += curr_lpips
+        total_lpips_alex += curr_lpips_alex
         cnt += curr_cnt
 
         # breakpoint()
@@ -461,10 +478,12 @@ with torch.no_grad():
                 "running ssim",
                 total_ssim / cnt,
                 "running lpips",
-                total_lpips / cnt
+                total_lpips / cnt,
+                "running lpips",
+                total_lpips_alex / cnt,
             )
         finish_file.write(
-            "{} {} {} {}\n".format(obj_name, curr_psnr, curr_ssim, curr_lpips, curr_cnt)
+            "{} {} {} {}\n".format(obj_name, curr_psnr, curr_ssim, curr_lpips, curr_lpips_alex, curr_cnt)
         )
         print('cnt', cnt)
-print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt)
+print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt, 'lpips_alex', total_lpips_alex / cnt)
