@@ -117,6 +117,9 @@ def extra_args(parser):
 
     parser.add_argument('--debug_vis_path', type=str, default='./vis')
 
+    parser.add_argument('--msn', action='store_true')
+    parser.add_argument('--msn_test_mode', type=str, default='test')
+
     return parser
 
 
@@ -135,9 +138,14 @@ args.dataroot = args.datadir
 dset = get_split_dataset(
     args.dataset_format, args.datadir, want_split=args.split, training=False, opt=args
 )
-data_loader = torch.utils.data.DataLoader(
-    dset, batch_size=1, shuffle=False, num_workers=4, pin_memory=False, collate_fn=collate_fn
-)
+if args.msn:
+    data_loader = torch.utils.data.DataLoader(
+        dset, batch_size=1, shuffle=False, num_workers=4, pin_memory=False
+    )
+else:
+    data_loader = torch.utils.data.DataLoader(
+        dset, batch_size=1, shuffle=False, num_workers=4, pin_memory=False, collate_fn=collate_fn
+    )
 
 output_dir = args.output.strip()
 has_output = len(output_dir) > 0
@@ -236,6 +244,10 @@ total_objs = len(data_loader)
 
 with torch.no_grad():
     for obj_idx, data in enumerate(data_loader):
+
+        if args.msn:
+            data['path'] = [args.datadir]
+
         print(
             "OBJECT",
             obj_idx,
@@ -376,6 +388,7 @@ with torch.no_grad():
                 images_gt.permute(0, 2, 3, 1).contiguous().numpy()
             )  # (NV-NS, H, W, 3)
             for view_idx in range(n_gen_views):
+
                 # ssim = skimage.measure.compare_ssim(
                 #     all_rgb[view_idx],
                 #     rgb_gt_all[view_idx],
@@ -395,9 +408,14 @@ with torch.no_grad():
                 psnr = compare_psnr(
                     all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
                 )
-                curr_ssim += ssim
-                curr_psnr += psnr
                 print('psnr: ', psnr)
+                if args.msn and view_idx == 0 and args.include_src:
+                    print('not adding the above, continuing for loop')
+                    continue
+                else:
+                    curr_ssim += ssim
+                    curr_psnr += psnr
+
 
                 # breakpoint()
 
@@ -405,8 +423,9 @@ with torch.no_grad():
                 preds = preds[None, ...]
                 gts = torch.from_numpy(rgb_gt_all[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
                 gts = gts[None, ...]
-                lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda)) # -1 to 1
-                lpips = lpips.mean().item()
+                # lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda)) # -1 to 1
+                # lpips = lpips.mean().item()
+                lpips = 0.0
                 curr_lpips += lpips
 
                 lpips = lpips_alex(preds.to(device=cuda), gts.to(device=cuda))
@@ -428,10 +447,13 @@ with torch.no_grad():
                     )
                     out_im = np.hstack((all_rgb[view_idx], rgb_gt_all[view_idx]))
                     imageio.imwrite(out_file, (out_im * 255).astype(np.uint8))
-        curr_psnr /= n_gen_views
-        curr_ssim /= n_gen_views
-        curr_lpips /= n_gen_views
-        curr_lpips_alex /= n_gen_views
+        n_compute_metric = n_gen_views
+        if args.msn and args.include_src:
+            n_compute_metric -= 1
+        curr_psnr /= n_compute_metric
+        curr_ssim /= n_compute_metric
+        curr_lpips /= n_compute_metric
+        curr_lpips_alex /= n_compute_metric
         curr_cnt = 1
         total_psnr += curr_psnr
         total_ssim += curr_ssim
@@ -442,10 +464,10 @@ with torch.no_grad():
         # breakpoint()
         print('Visualizationg validation results')
         import matplotlib.pyplot as plt
-        n = 3
+        n = args.n_img_each_scene - 1
         if args.include_src:
             n += 1
-        fig, axs = plt.subplots(2, n, figsize=(8, 4))
+        fig, axs = plt.subplots(2, n, figsize=(n*2, 4))
         plt.axis('off')
         for _ in range(n):
             axs[0, _].imshow(rgb_gt_all[_])

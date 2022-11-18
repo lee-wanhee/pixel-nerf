@@ -123,7 +123,8 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                            points_per_item=2048, do_frustum_culling=False, shapenet=True, max_len=None,
                            importance_cutoff=0.5)
         if want_test:
-            test_set = Clevr3dDataset(path='/ccn2/u/honglinc/datasets/multishapenet', mode='val', max_n=6,
+            print('opt.msn_test_mode:', opt.msn_test_mode)
+            test_set = Clevr3dDataset(path='/ccn2/u/honglinc/datasets/multishapenet', mode=opt.msn_test_mode, max_n=6,
                                      max_views=None,
                                      points_per_item=2048, do_frustum_culling=False, shapenet=True, max_len=None,
                                      importance_cutoff=0.5)
