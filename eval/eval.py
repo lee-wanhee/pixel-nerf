@@ -388,6 +388,7 @@ with torch.no_grad():
                 images_gt.permute(0, 2, 3, 1).contiguous().numpy()
             )  # (NV-NS, H, W, 3)
             for view_idx in range(n_gen_views):
+                # breakpoint()
 
                 # ssim = skimage.measure.compare_ssim(
                 #     all_rgb[view_idx],

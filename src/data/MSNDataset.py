@@ -118,6 +118,7 @@ class Clevr3dDataset(data.Dataset):
         all_camera_pos = metadata['camera_pos'][:self.num_views]
 
         all_poses = []
+        all_mags = []
         for i in range(self.num_views):
             pose_tensor = get_world_to_camera_matrix(torch.tensor(all_camera_pos[i]))
             # print(all_camera_pos[i])
@@ -140,7 +141,14 @@ class Clevr3dDataset(data.Dataset):
             # print(pose)
 
             # pose_tensor = torch.tensor(pose_np)
+            all_mags.append(real_pose_inverse[:3, 3].norm(p=2))
             all_poses.append(pose) # [None, ...]
+
+        # fixme: hacky way to get the camera transformation right. fix it
+        new_poses = [all_poses[k].clone() for k in [0, 2, 1]]
+        new_poses[1][:3, 3] = new_poses[1][:3, 3] / new_poses[1][:3, 3].norm(p=2) * all_mags[1]
+        new_poses[2][:3, 3] = new_poses[2][:3, 3] / new_poses[2][:3, 3].norm(p=2) * all_mags[2]
+        all_poses = new_poses
 
         all_poses = torch.stack(all_poses)
         # for i in range(self.num_views):
@@ -232,7 +240,7 @@ class Clevr3dDataset(data.Dataset):
         #     example['masks'] = mask
 
         # focal = torch.tensor([1.09375 * 128, 1.45833 * 128], dtype=torch.float32)
-        focal = torch.tensor([1.45833 * 128, 1.09375 * 128], dtype=torch.float32) # before
+        focal = torch.tensor([1.45833 * 128, 1.45833 * 128], dtype=torch.float32) # before
 
         # print(all_imgs.shape)
         # print(all_poses.shape)
