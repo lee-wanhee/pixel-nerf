@@ -79,9 +79,10 @@ class Clevr3dDataset(data.Dataset):
         self.lindisp = False
 
     def __len__(self):
-        if self.max_len is not None:
-            return self.max_len
-        return len(self.idxs) * self.num_views
+        # if self.max_len is not None:
+        #     return self.max_len
+        # return len(self.idxs) * self.num_views
+        return len(self.idxs)
 
     def __getitem__(self, idx, noisy=True):
         scene_idx = idx % len(self.idxs)
