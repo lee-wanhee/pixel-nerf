@@ -250,6 +250,9 @@ total_objs = len(data_loader)
 with torch.no_grad():
     for obj_idx, data in enumerate(data_loader):
 
+        if obj_idx != 61 and obj_idx != 386:
+            continue
+
         if args.msn:
             data['path'] = [args.datadir]
 

@@ -5,12 +5,12 @@ radius="${3:-$'10.0'}"
 echo "z_limit = $z_limit"
 echo "isosurface = $isosurface"
 echo "radius = $radius"
-python eval/eval_mesh.py -n msn_train_raybatch4096_111_backup_3am -c conf/exp/msn.conf \
+python eval/eval_mesh.py -n msn_train_raybatch4096_1117 -c conf/exp/msn.conf \
     -D /ccn2/u/honglinc/multishapenet --gpu_id='0' \
-    -P '0' -O eval_out/msn_mesh_030723_2pm \
+    -P '0' -O eval_out/msn_mesh_030723_11pm \
     --frame5 \
     --n_scenes 15000 --skip 8000 --fixed_locality --n_img_each_scene 3 --no_shuffle \
-    --resume --checkpoints_path checkpoints_backup_1118 \
+    --resume --checkpoints_path checkpoints_backup_030723 \
     --z_limit $z_limit --isosurface $isosurface --radius $radius \
     --use_eisen_seg --unmasked_mesh --msn --msn_test_mode 'val' \
 
