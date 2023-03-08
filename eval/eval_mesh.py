@@ -123,6 +123,9 @@ def extra_args(parser):
     parser.add_argument('--unmasked_mesh', action='store_true')
     parser.add_argument('--radius', type=float, default=2.0)
 
+    parser.add_argument('--msn', action='store_true')
+    parser.add_argument('--msn_test_mode', type=str, default='test')
+
     return parser
 
 
@@ -141,9 +144,14 @@ args.dataroot = args.datadir
 dset = get_split_dataset(
     args.dataset_format, args.datadir, want_split=args.split, training=False, opt=args
 )
-data_loader = torch.utils.data.DataLoader(
-    dset, batch_size=1, shuffle=False, num_workers=8, pin_memory=False, collate_fn=collate_fn
-)
+if args.msn:
+    data_loader = torch.utils.data.DataLoader(
+        dset, batch_size=1, shuffle=False, num_workers=4, pin_memory=False
+    )
+else:
+    data_loader = torch.utils.data.DataLoader(
+        dset, batch_size=1, shuffle=False, num_workers=8, pin_memory=False, collate_fn=collate_fn
+    )
 
 output_dir = args.output.strip()
 has_output = len(output_dir) > 0
@@ -241,6 +249,10 @@ total_objs = len(data_loader)
 
 with torch.no_grad():
     for obj_idx, data in enumerate(data_loader):
+
+        if args.msn:
+            data['path'] = [args.datadir]
+
         print(
             "OBJECT",
             obj_idx,
@@ -378,7 +390,10 @@ with torch.no_grad():
                 mode = 'val'
             elif 'test' in args.datadir:
                 mode = 'test'
+            elif 'multishapenet' in args.datadir:
+                mode = 'multishapenet_' + args.msn_test_mode
             else:
+                print('args.datadir', args.datadir)
                 raise NotImplementedError
 
             util.recon.save_obj(vertices=vertices_c1_, \
@@ -392,11 +407,23 @@ with torch.no_grad():
 
             isosurface = args.isosurface
             c1_3 = -args.z_limit
-            c2_3 = c1_3 + 5
+            c2_3 = c1_3 + 5 if not args.msn else c1_3 + 8
             coarse_mesh = args.coarse_mesh
             radius = args.radius
             assert coarse_mesh == False
-            vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+            if args.msn:
+                vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
+                                                                   c1=[-4, -4, c1_3],
+                                                                   c2=[4, 4, c2_3],
+                                                                   reso=[256, 256, 256],
+                                                                   isosurface=isosurface,
+                                                                   sigma_idx=3,
+                                                                   eval_batch_size=128 * 128 * 128,  # 128 * 128 * 64,
+                                                                   coarse=coarse_mesh,
+                                                                   device=None, masks=masks, src_pose=src_pose,
+                                                                   obj_idx=obj_idx, radius=radius)
+            else:
+                vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
                                                                c1=[-2.5, -2.5, c1_3],
                                                                c2=[2.5, 2.5, c2_3],
                                                                reso=[256, 256, 256],
@@ -414,12 +441,18 @@ with torch.no_grad():
                 mode = 'val'
             elif 'test' in args.datadir:
                 mode = 'test'
+            elif 'multishapenet' in args.datadir:
+                mode = 'multishapenet_' + args.msn_test_mode
             else:
+                print('args.datadir', args.datadir)
                 raise NotImplementedError
 
+            mesh_save_dir = f'mesh_030723_fg_mesh_{mode}_unmasked'
+            if not os.path.exists(mesh_save_dir):
+                os.makedirs(mesh_save_dir)
             util.recon.save_obj(vertices=vertices_c1_, \
                                 triangles=triangles, \
-                                path=f'fg_mesh_{mode}_unmasked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                path=f'mesh_030723_fg_mesh_{mode}_unmasked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:02d}_{radius:.1f}.obj', \
                                 vert_rgb=None)
 
         # breakpoint()

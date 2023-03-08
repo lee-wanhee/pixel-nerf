@@ -152,6 +152,7 @@ has_output = len(output_dir) > 0
 
 total_psnr = 0.0
 total_ssim = 0.0
+total_ssim_piq = 0.0
 cnt = 0
 
 # wanhee
@@ -379,6 +380,7 @@ with torch.no_grad():
 
         curr_ssim = 0.0
         curr_psnr = 0.0
+        curr_ssim_piq = 0.0
         curr_lpips = 0.0
         curr_lpips_alex = 0.0
         if not args.no_compare_gt:
@@ -406,6 +408,7 @@ with torch.no_grad():
                     multichannel=True,
                     data_range=1,
                 )
+                ssim_piq = compute_ssim(torch.from_numpy(all_rgb[view_idx])[None, ...].permute(0, 3, 1, 2), torch.from_numpy(rgb_gt_all[view_idx])[None, ...].permute(0, 3, 1, 2), data_range=1.)
                 psnr = compare_psnr(
                     all_rgb[view_idx], rgb_gt_all[view_idx], data_range=1
                 )
@@ -416,6 +419,7 @@ with torch.no_grad():
                 else:
                     curr_ssim += ssim
                     curr_psnr += psnr
+                    curr_ssim_piq += ssim_piq
 
 
                 # breakpoint()
@@ -455,11 +459,13 @@ with torch.no_grad():
         curr_ssim /= n_compute_metric
         curr_lpips /= n_compute_metric
         curr_lpips_alex /= n_compute_metric
+        curr_ssim_piq /= n_compute_metric
         curr_cnt = 1
         total_psnr += curr_psnr
         total_ssim += curr_ssim
         total_lpips += curr_lpips
         total_lpips_alex += curr_lpips_alex
+        total_ssim_piq += curr_ssim_piq
         cnt += curr_cnt
 
         # breakpoint()
@@ -504,9 +510,11 @@ with torch.no_grad():
                 total_lpips / cnt,
                 "running lpips",
                 total_lpips_alex / cnt,
+                "running ssim_piq",
+                total_ssim_piq / cnt,
             )
         finish_file.write(
             "{} {} {} {}\n".format(obj_name, curr_psnr, curr_ssim, curr_lpips, curr_lpips_alex, curr_cnt)
         )
         print('cnt', cnt)
-print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt, 'lpips_alex', total_lpips_alex / cnt)
+print("final psnr", total_psnr / cnt, "ssim", total_ssim / cnt, 'lpips', total_lpips / cnt, 'lpips_alex', total_lpips_alex / cnt, 'ssim_piq', total_ssim_piq / cnt)

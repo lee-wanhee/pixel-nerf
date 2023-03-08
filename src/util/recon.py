@@ -234,7 +234,7 @@ def marching_cubes(
             # sigmas += inside_mask.cpu().numpy() * 100
 
         print("Running marching cubes")
-        breakpoint()
+        # breakpoint()
         vertices, triangles = mcubes.marching_cubes(sigmas, isosurface)
         # vertices, triangles, _, _ = measure.marching_cubes_lewiner(sigmas, isosurface)
         # Scale
