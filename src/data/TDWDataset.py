@@ -46,7 +46,7 @@ class MultiscenesDataset(BaseDataset):
         self.lindisp = False
         opt.dataroot = opt.datadir
         opt.num_slots = 4
-        opt.val_n_scenes = 600
+        opt.val_n_scenes = 100
 
         print('TDW dataset initialized')
 
@@ -64,7 +64,7 @@ class MultiscenesDataset(BaseDataset):
             self.color_transform = transforms.ColorJitter(0.4, 0.4, 0.4, 0.4)
 
         # todo: debugging room_chair_train only, set the flag to False for TDW dataset
-        self.disable_load_mask = False
+        self.disable_load_mask = True
 
     def _transform(self, img):
         if self.opt.dataset_nearest_interp:
@@ -346,7 +346,7 @@ class MultiscenesDataset(BaseDataset):
 
             else:
                 ret['use_fg_mask'] = False
-                masks = (~ret['bg_mask'] * 1.)
+                # masks = (~ret['bg_mask'] * 1.)
 
 
         self.buffer_rets = rets
@@ -424,7 +424,8 @@ def collate_fn(batch):
         bboxes = ret['bboxes'].view(SB, int(SBNV / SB), 4)
     else:
         images = ret['img_data'].view(SB, int(SBNV / SB), 3, H, W)
-        masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV / SB), 1, H, W)
+        # masks = (~ret['bg_mask'] * 1.).view(SB, int(SBNV / SB), 1, H, W)
+        masks = None
         bboxes = None
 
     data = {

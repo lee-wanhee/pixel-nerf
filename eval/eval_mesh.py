@@ -117,7 +117,7 @@ def extra_args(parser):
     parser.add_argument('--fg_mask', action='store_true')
     parser.add_argument('--mesh_eval', action='store_true')
     parser.add_argument('--z_limit', type=float, default=4.5)
-    parser.add_argument('--isosurface', type=int, default=30)
+    parser.add_argument('--isosurface', type=float, default=30.)
     parser.add_argument('--coarse_mesh', action='store_true')
     parser.add_argument('--masked_mesh', action='store_true')
     parser.add_argument('--unmasked_mesh', action='store_true')
@@ -401,7 +401,7 @@ with torch.no_grad():
 
             util.recon.save_obj(vertices=vertices_c1_, \
                                 triangles=triangles, \
-                                path=f'fg_mesh_{mode}_masked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                path=f'fg_mesh_{mode}_masked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:.2f}_{radius:.1f}.obj', \
                                 vert_rgb=None)
 
         if args.unmasked_mesh:
@@ -410,14 +410,14 @@ with torch.no_grad():
 
             isosurface = args.isosurface
             c1_3 = -args.z_limit
-            c2_3 = c1_3 + 5 if not args.msn else c1_3 + 8
+            c2_3 = c1_3 + 5 if not args.msn else c1_3 + 10
             coarse_mesh = args.coarse_mesh
             radius = args.radius
             assert coarse_mesh == False
             if args.msn:
                 vertices_c1, triangles = util.recon.marching_cubes(occu_net=net,
-                                                                   c1=[-4, -4, c1_3],
-                                                                   c2=[4, 4, c2_3],
+                                                                   c1=[-5, -5, c1_3],
+                                                                   c2=[5, 5, c2_3],
                                                                    reso=[256, 256, 256],
                                                                    isosurface=isosurface,
                                                                    sigma_idx=3,
@@ -450,12 +450,12 @@ with torch.no_grad():
                 print('args.datadir', args.datadir)
                 raise NotImplementedError
 
-            mesh_save_dir = f'mesh_030723_fg_mesh_{mode}_unmasked'
+            mesh_save_dir = f'mesh_030823_1am_xyz10_fg_mesh_{mode}_unmasked'
             if not os.path.exists(mesh_save_dir):
                 os.makedirs(mesh_save_dir)
             util.recon.save_obj(vertices=vertices_c1_, \
                                 triangles=triangles, \
-                                path=f'mesh_030723_fg_mesh_{mode}_unmasked/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:02d}_{radius:.1f}.obj', \
+                                path=f'{mesh_save_dir}/fg_mesh_{obj_idx:06d}_{-c1_3:.2f}_{isosurface:.2f}_{radius:.1f}.obj', \
                                 vert_rgb=None)
 
         # breakpoint()

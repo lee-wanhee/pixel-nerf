@@ -1,6 +1,6 @@
 #!/bin/bash
 z_limit="${1:-$'0.0'}"
-isosurface="${2:-$'10'}"
+isosurface="${2:-$'10.0'}"
 radius="${3:-$'10.0'}"
 echo "z_limit = $z_limit"
 echo "isosurface = $isosurface"

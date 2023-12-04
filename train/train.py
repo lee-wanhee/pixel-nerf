@@ -71,7 +71,7 @@ def extra_args(parser):
 
     return parser
 
-
+# breakpoint()
 args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
 device = util.get_cuda(args.gpu_id[0])
 
@@ -418,6 +418,6 @@ class PixelNeRFTrainer(trainlib.Trainer):
         renderer.train()
         return vis, vals
 
-
+print("Starting training...")
 trainer = PixelNeRFTrainer()
 trainer.start()

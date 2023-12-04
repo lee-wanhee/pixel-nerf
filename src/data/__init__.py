@@ -70,14 +70,15 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
             opt.isTrain = False
             print(datadir)
             if 'tdw' in datadir:
-                opt.val_n_scenes = 600
-                opt.n_scenes = 600
+                opt.val_n_scenes = 100 # 600
+                opt.n_scenes = 100 # 600
             elif 'bridge' in datadir:
                 opt.val_n_scenes = 50
                 opt.n_scenes = 50
                 print(f"'bridge' in {datadir}")
             else:
                 raise NotImplementedError
+            opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_eval"
             if 'train' in datadir:
                 opt.datadir = datadir.replace('train', 'val')
             print('want_val', opt.datadir)
@@ -90,14 +91,15 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
             opt.skip = 0
             if 'tdw' in datadir:
                 print(f'tdw in {datadir}')
-                opt.n_scenes = 600
-                opt.val_n_scenes = 600
+                opt.n_scenes = 100 # 600
+                opt.val_n_scenes = 100 # 600
             elif 'bridge' in datadir:
                 print(f'bridge in {datadir}')
                 opt.n_scenes = 50
                 opt.val_n_scenes = 50
             else:
                 raise NotImplementedError
+            opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_eval"
             if 'train' in datadir:
                 opt.datadir = datadir.replace('train', 'test')
             print('want_test', opt.datadir)
