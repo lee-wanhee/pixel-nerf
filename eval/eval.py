@@ -428,9 +428,9 @@ with torch.no_grad():
                 preds = preds[None, ...]
                 gts = torch.from_numpy(rgb_gt_all[view_idx]).permute(2, 0, 1) * 2.0 - 1.0
                 gts = gts[None, ...]
-                # lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda)) # -1 to 1
-                # lpips = lpips.mean().item()
-                lpips = 0.0
+                lpips = lpips_vgg(preds.to(device=cuda), gts.to(device=cuda)) # -1 to 1
+                lpips = lpips.mean().item()
+                # lpips = 0.0
                 curr_lpips += lpips
 
                 lpips = lpips_alex(preds.to(device=cuda), gts.to(device=cuda))
