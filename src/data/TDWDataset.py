@@ -46,7 +46,7 @@ class MultiscenesDataset(BaseDataset):
         self.lindisp = False
         opt.dataroot = opt.datadir
         opt.num_slots = 4
-        opt.val_n_scenes = 100
+        opt.val_n_scenes = 600
 
         print('TDW dataset initialized')
 
