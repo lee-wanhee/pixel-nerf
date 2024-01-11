@@ -15,7 +15,7 @@ class Trainer:
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
 
-        if 'tdw' in args.dataset_format:
+        if 'tdw' in args.dataset_format or 'planter' in args.dataset_format:
             self.train_data_loader = torch.utils.data.DataLoader(
                 train_dataset,
                 batch_size=args.batch_size,

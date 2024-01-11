@@ -46,7 +46,7 @@ class MultiscenesDataset(BaseDataset):
         self.lindisp = False
         opt.dataroot = opt.datadir
         opt.num_slots = 4
-        opt.val_n_scenes = 600
+        opt.val_n_scenes = 44
 
         print('TDW dataset initialized')
 
@@ -317,6 +317,8 @@ class MultiscenesDataset(BaseDataset):
                 ret['dataset'] = 'tdw'
             elif 'bridge' in self.opt.dataroot:
                 ret['dataset'] = 'bridge'
+            elif 'planter' in self.opt.dataroot:
+                ret['dataset'] = 'planter'
             else:
                 raise NotImplementedError
 
@@ -411,6 +413,8 @@ def collate_fn(batch):
         focal = torch.Tensor([[0.9605 * 128, 0.9605 * 128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV / SB), 2)[:, 0]
     elif flat_batch[0]['dataset'] == 'bridge':
         focal = torch.Tensor([[0.7703 * 128, 0.7703 * 128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV / SB), 2)[:, 0]
+    elif flat_batch[0]['dataset'] == 'planter':
+        focal = torch.Tensor([[1.492025 * 128, 1.450494 * 128] for _ in range(len(ret['paths']))]).view(SB, int(SBNV / SB), 2)[:, 0]
     else:
         raise NotImplementedError
 

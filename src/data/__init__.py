@@ -49,7 +49,8 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
         dset_class = MultiscenesDataset
     elif dataset_type.startswith("msn"):
         dset_class = Clevr3dDataset
-
+    elif dataset_type.startswith("planter"):
+        dset_class = MultiscenesDataset
     else:
         raise NotImplementedError("Unsupported dataset type", dataset_type)
 
@@ -61,7 +62,7 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
     print(want_val, 'want_val')
     print(want_test, 'want_test')
     # breakpoint()
-    if dataset_type.startswith("tdw"):
+    if dataset_type.startswith("tdw") or dataset_type.startswith("planter"):
         if want_train:
             opt.isTrain = True
             train_set = dset_class(opt, **flags, **kwargs)
@@ -76,6 +77,10 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 opt.val_n_scenes = 50
                 opt.n_scenes = 50
                 print(f"'bridge' in {datadir}")
+            elif 'planter' in datadir:
+                opt.val_n_scenes = 44
+                opt.n_scenes = 44
+                print(f"'planter' in {datadir}")
             else:
                 raise NotImplementedError
             # opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_eval"
@@ -86,7 +91,9 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_stacking_val"
             elif 'more_bg' in datadir:
                 opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_val"
-            if 'train' in datadir:
+            elif 'planter' in datadir:
+                opt.datadir = "/ccn2/u/wanhee/datasets/planters/4obj-test"
+            elif 'train' in datadir:
                 opt.datadir = datadir.replace('train', 'val')
             print('want_val', opt.datadir)
             val_set = dset_class(opt, **flags, **kwargs)
@@ -104,6 +111,10 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 print(f'bridge in {datadir}')
                 opt.n_scenes = 50
                 opt.val_n_scenes = 50
+            elif 'planter' in datadir:
+                print(f'planter in {datadir}')
+                opt.n_scenes = 44
+                opt.val_n_scenes = 44
             else:
                 raise NotImplementedError
             # opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_eval"
@@ -113,7 +124,9 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
                 opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_stacking_val"
             elif 'more_bg' in datadir:
                 opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_val"
-            if 'train' in datadir:
+            elif 'planter' in datadir:
+                opt.datadir = "/ccn2/u/wanhee/datasets/planters/4obj-test"
+            elif 'train' in datadir:
                 opt.datadir = datadir.replace('train', 'test')
             print('want_test', opt.datadir)
             test_set = dset_class(opt, **flags, **kwargs)
