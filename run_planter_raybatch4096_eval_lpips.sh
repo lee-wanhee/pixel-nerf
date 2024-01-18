@@ -1,10 +1,10 @@
 #!/bin/bash
 python eval/eval.py -n planter_raybatch4096 -c conf/exp/planter.conf \
     -D /ccn2/u/wanhee/datasets/planters/4obj-train --gpu_id='0' \
-    -P '0' -O eval_out/planter_raybatch4096_011024 \
+    -P '0' -O eval_out/planter_2_raybatch4096_011724 \
     --frame5 \
     --n_scenes 745 --skip 0 --fixed_locality --n_img_each_scene 3 \
-    --debug_vis_path vis_planter_011024 --no_shuffle \
+    --debug_vis_path vis_planter_2_011724 --no_shuffle \
     --checkpoints_path checkpoints
     #  -V 1 --batch_size 8
     # --fg_mask

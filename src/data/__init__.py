@@ -92,7 +92,7 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
             elif 'more_bg' in datadir:
                 opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_val"
             elif 'planter' in datadir:
-                opt.datadir = "/ccn2/u/wanhee/datasets/planters/4obj-test"
+                opt.datadir = "/ccn2/u/wanhee/datasets/planters/4obj-test-2"
             elif 'train' in datadir:
                 opt.datadir = datadir.replace('train', 'val')
             print('want_val', opt.datadir)
@@ -125,7 +125,7 @@ def get_split_dataset(dataset_type, datadir, want_split="all", training=True, op
             elif 'more_bg' in datadir:
                 opt.datadir = "/ccn2/u/honglinc/datasets/tdw_playroom_v3_more_bg_val"
             elif 'planter' in datadir:
-                opt.datadir = "/ccn2/u/wanhee/datasets/planters/4obj-test"
+                opt.datadir = "/ccn2/u/wanhee/datasets/planters/4obj-test-2"
             elif 'train' in datadir:
                 opt.datadir = datadir.replace('train', 'test')
             print('want_test', opt.datadir)
